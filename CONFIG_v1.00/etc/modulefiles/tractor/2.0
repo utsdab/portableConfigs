@@ -18,7 +18,7 @@ switch [ module-info mode ] {
 #######################################################
 	
 append-path PYTHONPATH /Applications/Pixar/Tractor-2.0/lib/python2.7/site-packages
-append-path DYLD_LIBRARY_PATH /Applications/Pixar/Tractor-2.0/lib 	
+#append-path DYLD_LIBRARY_PATH /Applications/Pixar/Tractor-2.0/lib 	
 ###  note osx 10.9 doesnt like you to append anything outside of their list of 
 ###  envars that start with DYLD_ to the path
 ###  modules does this with a placeholder envvar

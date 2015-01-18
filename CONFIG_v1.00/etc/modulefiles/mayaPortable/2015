@@ -60,7 +60,7 @@ append-path PATH 		/usr/aw/COM/etc
 
 set MAYA_LOCATION 			$MAYA_INSTALL_PATH/Maya.app/Contents
 setenv MAYA_LOCATION 		$MAYA_LOCATION
-append-path DYLD_LIBRARY_PATH 	$MAYA_LOCATION/MacOS	
+#append-path DYLD_LIBRARY_PATH 	$MAYA_LOCATION/MacOS	
 
 ###  note osx 10.9 doesnt like you to append anything outside of their list of 
 ###  envars that start with DYLD_ to the path

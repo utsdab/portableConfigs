@@ -25,6 +25,3 @@ evalDeferred("autoLoadPlugin(\"\", \"shaderFXPlugin\", \"shaderFXPlugin\")");
 evalDeferred("autoLoadPlugin(\"\", \"ArubaTessellator\", \"ArubaTessellator\")");
 evalDeferred("autoLoadPlugin(\"\", \"stereoCamera\", \"stereoCamera\")");
 evalDeferred("autoLoadPlugin(\"\", \"xgenMR.py\", \"xgenMR\")");
-evalDeferred("autoLoadPlugin(\"\", \"quatNodes\", \"quatNodes\")");
-evalDeferred("autoLoadPlugin(\"\", \"OpenVDB\", \"OpenVDB\")");
-evalDeferred("autoLoadPlugin(\"\", \"fbxmaya\", \"fbxmaya\")");
