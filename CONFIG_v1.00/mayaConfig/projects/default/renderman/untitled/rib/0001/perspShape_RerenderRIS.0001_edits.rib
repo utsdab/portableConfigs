@@ -1,0 +1,91 @@
+##RenderMan RIB
+version 3.04
+Option "rerender" "int[2] lodrange" [0 3]
+##streammarker9
+EditBegin "instance" 
+Bxdf "PxrLightEmission" "visualizer" "string __instanceid" ["defaultLightShape_visualizer"]
+IfBegin "!defined(user:shader_bindingstrength) || $user:shader_bindingstrength <= 0" 
+ShadingRate 100
+Surface "renderman/untitled/shaders/defaultLightShape_rfm" "float rman__LightPrimaryVisibility" [0] "string shape" ["distant"] "float intensity" [2] "color lightcolor" [1 1 1] "float temperature" [5500] "color specAmount" [1 1 1] "color diffAmount" [1 1 1] 
+"color shadowColor" [0 0 0] "string __group" [""] "float coneangle" [20] "float penumbraangle" [5] "float penumbraexponent" [0] "string profilemap" [""] "string iesprofile" [""] "float profilerange" [-1] "float distributionAngle" [90] "float angularVisibility" [1] "float rmsDisplayBarnDoors" [0] "float rmsBarnT" [0] 
+"float rmsBarnB" [0] "float rmsBarnL" [0] "float rmsBarnR" [0] "string barnDoorMap" ["default.tex"] "float traceShadows" [1] "float adaptive" [1] "string subset" [""] "string excludesubset" [""] "string shadowname" [""] "float samplebase" [0.5] "float bias" [-1] "float mapbias" [1] "float mapbias2" [1] "float sides" [0] 
+"float areaNormalize" [1] "string photonTarget" [""] "string __category" ["stdrsl_plausible,defaultLightShape"] "__instanceid" ["renderman/untitled/shaders/defaultLightShape_rfm_0"]
+ShadingRate 100
+AreaLightSource "renderman/untitled/shaders/defaultLightShape_rfm" "defaultLightShape" "float rman__LightPrimaryVisibility" [0] "string shape" ["distant"] "float intensity" [2] "color lightcolor" [1 1 1] "float temperature" [5500] "color specAmount" [1 1 1] "color diffAmount" [1 1 1] 
+"color shadowColor" [0 0 0] "string __group" [""] "float coneangle" [20] "float penumbraangle" [5] "float penumbraexponent" [0] "string profilemap" [""] "string iesprofile" [""] "float profilerange" [-1] "float distributionAngle" [90] "float angularVisibility" [1] "float rmsDisplayBarnDoors" [0] "float rmsBarnT" [0] 
+"float rmsBarnB" [0] "float rmsBarnL" [0] "float rmsBarnR" [0] "string barnDoorMap" ["default.tex"] "float traceShadows" [1] "float adaptive" [1] "string subset" [""] "string excludesubset" [""] "string shadowname" [""] "float samplebase" [0.5] "float bias" [-1] "float mapbias" [1] "float mapbias2" [1] "float sides" [0] 
+"float areaNormalize" [1] "string photonTarget" [""] "string __category" ["stdrsl_plausible,defaultLightShape"] "__instanceid" ["renderman/untitled/shaders/defaultLightShape_rfm_0"]
+Attribute "user" "int shader_bindingstrength" [0]
+IfEnd 
+EditEnd 
+##streammarker10
+EditBegin "attribute" "string scopename" ["defaultLightShape"]
+Identity 
+Transform [ 0.993637 -0.0471716 -0.102272 0  -0.0471675 0.650304 -0.758209 0  0.102274 0.758208 0.643941 0  0.178154 1.32075 1.1217 1 ]
+EditEnd 
+##streammarker11
+EditBegin "instance" 
+Bxdf "PxrLightEmission" "visualizer" "string __instanceid" ["defaultLightShape_visualizer"]
+IfBegin "!defined(user:shader_bindingstrength) || $user:shader_bindingstrength <= 0" 
+ShadingRate 100
+Surface "renderman/untitled/shaders/defaultLightShape_rfm" "float rman__LightPrimaryVisibility" [0] "string shape" ["distant"] "float intensity" [2] "color lightcolor" [1 1 1] "float temperature" [5500] "color specAmount" [1 1 1] "color diffAmount" [1 1 1] 
+"color shadowColor" [0 0 0] "string __group" [""] "float coneangle" [20] "float penumbraangle" [5] "float penumbraexponent" [0] "string profilemap" [""] "string iesprofile" [""] "float profilerange" [-1] "float distributionAngle" [90] "float angularVisibility" [1] "float rmsDisplayBarnDoors" [0] "float rmsBarnT" [0] 
+"float rmsBarnB" [0] "float rmsBarnL" [0] "float rmsBarnR" [0] "string barnDoorMap" ["default.tex"] "float traceShadows" [1] "float adaptive" [1] "string subset" [""] "string excludesubset" [""] "string shadowname" [""] "float samplebase" [0.5] "float bias" [-1] "float mapbias" [1] "float mapbias2" [1] "float sides" [0] 
+"float areaNormalize" [1] "string photonTarget" [""] "string __category" ["stdrsl_plausible,defaultLightShape"] "__instanceid" ["renderman/untitled/shaders/defaultLightShape_rfm_0"]
+ShadingRate 100
+AreaLightSource "renderman/untitled/shaders/defaultLightShape_rfm" "defaultLightShape" "float rman__LightPrimaryVisibility" [0] "string shape" ["distant"] "float intensity" [2] "color lightcolor" [1 1 1] "float temperature" [5500] "color specAmount" [1 1 1] "color diffAmount" [1 1 1] 
+"color shadowColor" [0 0 0] "string __group" [""] "float coneangle" [20] "float penumbraangle" [5] "float penumbraexponent" [0] "string profilemap" [""] "string iesprofile" [""] "float profilerange" [-1] "float distributionAngle" [90] "float angularVisibility" [1] "float rmsDisplayBarnDoors" [0] "float rmsBarnT" [0] 
+"float rmsBarnB" [0] "float rmsBarnL" [0] "float rmsBarnR" [0] "string barnDoorMap" ["default.tex"] "float traceShadows" [1] "float adaptive" [1] "string subset" [""] "string excludesubset" [""] "string shadowname" [""] "float samplebase" [0.5] "float bias" [-1] "float mapbias" [1] "float mapbias2" [1] "float sides" [0] 
+"float areaNormalize" [1] "string photonTarget" [""] "string __category" ["stdrsl_plausible,defaultLightShape"] "__instanceid" ["renderman/untitled/shaders/defaultLightShape_rfm_0"]
+Attribute "user" "int shader_bindingstrength" [0]
+IfEnd 
+EditEnd 
+##streammarker12
+EditBegin "option" 
+Identity 
+#Camera perspShape
+Clipping 0.1 10000
+Projection "perspective" "fov" [54.4322]
+ScreenWindow -1 1 -0.5625 0.5625
+Shutter 0 0
+ConcatTransform [ 0.45399 -0.515137 -0.726998 8.87949e-09  0 0.815929 -0.578152 1.20867e-08  -0.891006 -0.262476 -0.370424 5.4533e-09  -0.190112 -0.166532 3.82322 1 ]
+Camera "world" "float[2] shutteropening" [0 1]
+EditEnd 
+##streammarker13
+EditBegin "attribute" "string scopename" ["collectionHair"]
+Transform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+EditEnd 
+##streammarker14
+EditBegin "option" 
+Identity 
+#Camera perspShape
+Clipping 0.1 10000
+Projection "perspective" "fov" [54.4322]
+ScreenWindow -1 1 -0.5625 0.5625
+Shutter 0 0
+ConcatTransform [ 0.45399 -0.515137 -0.726998 8.87949e-09  0 0.815929 -0.578152 1.20867e-08  -0.891006 -0.262476 -0.370424 5.4533e-09  -0.190112 -0.166532 3.82322 1 ]
+Camera "world" "float[2] shutteropening" [0 1]
+EditEnd 
+##streammarker15
+EditBegin "option" 
+Identity 
+#Camera perspShape
+Clipping 0.1 10000
+Projection "perspective" "fov" [54.4322]
+ScreenWindow -1 1 -0.5625 0.5625
+Shutter 0 0
+ConcatTransform [ 0.45399 -0.515137 -0.726998 8.87949e-09  0 0.815929 -0.578152 1.20867e-08  -0.891006 -0.262476 -0.370424 5.4533e-09  -0.190112 -0.166532 3.82322 1 ]
+Camera "world" "float[2] shutteropening" [0 1]
+EditEnd 
+##streammarker16
+EditBegin "option" 
+Identity 
+#Camera perspShape
+Clipping 0.1 10000
+Projection "perspective" "fov" [54.4322]
+ScreenWindow -1 1 -0.5625 0.5625
+Shutter 0 0
+ConcatTransform [ 0.45399 -0.515137 -0.726998 8.87949e-09  0 0.815929 -0.578152 1.20867e-08  -0.891006 -0.262476 -0.370424 5.4533e-09  -0.190112 -0.166532 3.82322 1 ]
+Camera "world" "float[2] shutteropening" [0 1]
+EditEnd 
+##streammarker17

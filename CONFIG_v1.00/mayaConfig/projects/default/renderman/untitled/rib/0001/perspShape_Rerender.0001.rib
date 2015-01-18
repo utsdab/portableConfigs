@@ -1,0 +1,272 @@
+##RenderMan RIB
+#Created by RenderMan for Maya 5.5 (@1417965 Dec  8 2014)
+#Thu Dec 18 19:32:57 AEDT 2014
+version 3.04
+Option "ribparse" "string varsubst" [""]
+Option "ribparse" "string varsubst" ["$"]
+IfBegin "!defined(RMSPROJ_FROM_ENV)" 
+Option "user" "string RMSPROJ" ["/Users/120988/Desktop/CONFIGS/CONFIG_v1.00wip/mayaConfig/projects/default/"]
+IfEnd 
+IfBegin "!defined(RMSTREE)" 
+Option "user" "string RMSTREE" ["/Applications/Pixar/RenderManStudio-19.0-maya2015/"]
+IfEnd 
+Option "searchpath" "string resource" ["${RMSPROJ}:@"]
+Option "searchpath" "string archive" ["${RMSPROJ}:."]
+Option "searchpath" "string display" ["${RMSTREE}/bin:@"]
+Option "searchpath" "string shader" ["${RMSPROJ}:${RMSTREE}/lib/shaders/:@"]
+Option "searchpath" "string texture" ["${RMSPROJ}:${RMSTREE}/lib/textures/:@"]
+Option "searchpath" "string rixplugin" ["${RMSTREE}/lib/shaders/:@"]
+Option "searchpath" "string dirmap" [""]
+Option "searchpath" "string rifilter" ["${RMSTREE}/lib/rif/:${RMANTREE}/etc:@"]
+Option "searchpath" "string procedural" ["${RMSTREE}/lib/plugins/:${RMSTREE}/lib/plugins:${RMANTREE}/etc:@"]
+##rifcontrol insert begin -rif RLFInjector -rifend
+FrameBegin 1
+Identity 
+Option "user" "string pass_id" ["perspShape_Rerender"] "string pass_phase" ["/Job/Frames/Images"] "string pass_class" ["Rerender"] "string pass_flavor" [""] "string pass_crew" [""] "string pass_camera_name" ["perspShape"] "string pass_camera_flavor" [""] "string pass_layer" [""] "string renderer" ["Reyes"] "int pass_features_trace" [1] "int input_color_profile" [0]
+Option "trace" "int maxdepth" [4]
+PixelVariance 0.01
+Option "bucket" "string order" ["spiral"]
+Option "limits" "int[2] bucketsize" [16 16]
+Option "limits" "int gridsize" [256]
+Option "trace" "float decimationrate" [1]
+Option "hair" "float minwidth" [0.5]
+Option "statistics" "int level" [1]
+Option "statistics" "string filename" ["stdout"]
+Option "statistics" "string xmlfilename" ["renderman/untitled/rib/0001/perspShape_Rerender.0001.xml"]
+Option "limits" "color zthreshold" [0.996 0.996 0.996]
+Option "limits" "color othreshold" [0.996 0.996 0.996]
+Option "limits" "int texturememory" [2097152]
+Option "limits" "int geocachememory" [2097152]
+Option "limits" "int proceduralmemory" [0]
+Option "limits" "int deepshadowtiles" [1000]
+Option "limits" "int deepshadowmemory" [102400]
+Option "limits" "int radiositycachememory" [102400]
+Option "limits" "int brickmemory" [10240]
+Option "shading" "int directlightingsamples" [4]
+Option "limits" "float vprelativeshadingrate" [1]
+PixelSamples 2 2
+VolumePixelSamples 3 3
+CropWindow 0 1 0 1
+Option "photon" "string lifetime" ["transient"]
+Option "photon" "int emit" [0]
+Hider "raytrace" "int jitter" [1] "string integrationmode" ["path"] "string samplemode" [""] "int minsamples" [3] "int maxsamples" [4]
+Format 720 405 1
+Display "renderman/untitled/images/untitled" "internal" "rgba" "string filter" ["gaussian"] "float[2] filterwidth" [2 2] "int[4] quantize" [0 255 0 255] "float dither" [0.5] "float[2] exposure" [1 1]
+#Camera perspShape
+Clipping 0.1 10000
+Projection "perspective" "fov" [54.4322]
+ScreenWindow -1 1 -0.5625 0.5625
+Shutter 0 0
+ConcatTransform [ -0.0314107 -0.43377 -0.900476 5.62174e-12  6.61221e-09 0.90092 -0.433984 2.2938e-12  -0.999506 0.0136318 0.0282986 2.72899e-11  -8.09297 -1.18475 42.0355 1 ]
+Camera "world" "float[2] shutteropening" [0 1]
+Option "user" "color camera_bg" [0 0 0] "float camera_bga" [0]
+Imager "background" "color color" [0 0 0] "float alpha" [0]
+ResourceBegin 
+WorldBegin 
+##RLF ScopeBegin -name perspShape_Rerender -localbinding 1 -rlffilename renderman/untitled/rib/0001/perspShape_Rerender.0001.rlf -namespace 
+ScopedCoordinateSystem "world_ref"
+TransformBegin 
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+ScopedCoordinateSystem "CalicoCat_FurFeedbackShape"
+TransformEnd 
+Attribute "visibility" "int transmission" [1] "int specular" [1] "int diffuse" [1]
+Surface "defaultsurface" 
+Attribute "user" "int shader_bindingstrength" [0]
+Attribute "trace" "int maxdiffusedepth" [1] "int maxspeculardepth" [2] "int samplemotion" [1] "float bias" [0.001] "int displacements" [1]
+Attribute "dice" "string referencecamera" ["worldcamera"] "float minlength" [-1]
+ShadingRate 5
+GeometricApproximation "motionfactor" 3
+GeometricApproximation "focusfactor" 3
+Attribute "displacementbound" "string coordinatesystem" ["shader"] "float sphere" [0]
+Attribute "volume" "float depthrelativeshadingrate" [3] "string depthinterpolation" ["constant"]
+Attribute "stochastic" "int sigma" [1]
+Attribute "photon" "string causticmap" [""] "string globalmap" [""]
+Attribute "user" "string irRenderCam" ["false,37.0838,19.3101,-9.26237"]
+Attribute "user" "string irRenderCamFOV" ["54.4322"]
+Attribute "user" "string irRenderCamXform" ["-0.0314108,2.77556e-17,-0.999507,0,-0.43377,0.90092,0.0136318,0,0.900476,0.433984,-0.0282986,0,37.0838,19.3101,-9.26237,1"]
+Attribute "user" "string irRenderCamRatio" ["1"]
+AttributeBegin 
+Attribute "identifier" "string name" ["RMSGeoAreaLightShape1"]
+Transform [ 0.963051 0.0786025 0.257592 0  0.0786025 0.832786 -0.547987 0  -0.257592 0.547987 0.795837 0  0 12.3709 5.18461 1 ]
+IfBegin "!defined(user:shader_bindingstrength) || $user:shader_bindingstrength <= 0" 
+ShadingRate 100
+Surface "renderman/untitled/shaders/RMSGeoAreaLightShape1_rfm" "string shape" ["spot"] "float intensity" [6] "color lightcolor" [1 1 1] "float temperature" [5500] "color specAmount" [1 1 1] "color diffAmount" [1 1 1] "color shadowColor" [0 0 0] 
+"string __group" [""] "float coneangle" [20] "float penumbraangle" [5] "float penumbraexponent" [0] "string profilemap" [""] "string iesprofile" [""] "float distributionAngle" [90] "float angularVisibility" [1] "float rmsDisplayBarnDoors" [0] "float rmsBarnT" [0] "float rmsBarnB" [0] "float rmsBarnL" [0] "float rmsBarnR" [0] "string barnDoorMap" ["default.tex"] 
+"float traceShadows" [1] "float adaptive" [1] "string subset" [""] "string excludesubset" [""] "string shadowname" [""] "float samplebase" [0.5] "float bias" [-1] "float mapbias" [1] "float mapbias2" [1] "float sides" [0] "float areaNormalize" [1] "string photonTarget" [""] "string __category" ["stdrsl_plausible,RMSGeoAreaLightShape1"] "__instanceid" ["renderman/untitled/shaders/RMSGeoAreaLightShape1_rfm_0"]
+ShadingRate 100
+AreaLightSource "renderman/untitled/shaders/RMSGeoAreaLightShape1_rfm" "RMSGeoAreaLightShape1" "string shape" ["spot"] "float intensity" [6] "color lightcolor" [1 1 1] "float temperature" [5500] "color specAmount" [1 1 1] "color diffAmount" [1 1 1] "color shadowColor" [0 0 0] 
+"string __group" [""] "float coneangle" [20] "float penumbraangle" [5] "float penumbraexponent" [0] "string profilemap" [""] "string iesprofile" [""] "float distributionAngle" [90] "float angularVisibility" [1] "float rmsDisplayBarnDoors" [0] "float rmsBarnT" [0] "float rmsBarnB" [0] "float rmsBarnL" [0] "float rmsBarnR" [0] "string barnDoorMap" ["default.tex"] 
+"float traceShadows" [1] "float adaptive" [1] "string subset" [""] "string excludesubset" [""] "string shadowname" [""] "float samplebase" [0.5] "float bias" [-1] "float mapbias" [1] "float mapbias2" [1] "float sides" [0] "float areaNormalize" [1] "string photonTarget" [""] "string __category" ["stdrsl_plausible,RMSGeoAreaLightShape1"] "__instanceid" ["renderman/untitled/shaders/RMSGeoAreaLightShape1_rfm_0"]
+Attribute "user" "int shader_bindingstrength" [0]
+IfEnd 
+Attribute "visibility" "int camera" [0]
+Attribute "visibility" "int specular" [0] "int diffuse" [0] "int transmission" [0] "int photon" [0]
+ShadingRate 100
+Sides 1
+Attribute "dice" "string offscreenstrategy" ["sphericalprojection"]
+ReverseOrientation 
+Disk 0 0.5 360 
+AttributeEnd 
+Illuminate "RMSGeoAreaLightShape1" 1
+AttributeBegin 
+Attribute "identifier" "string name" ["groundPlane_transform"]
+ConcatTransform [ 8 0 0 0  0 1.77636e-15 8 0  0 -1 2.22045e-16 0  0 0 0 1 ]
+AttributeBegin 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["Manipulator1"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["UniversalManip"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeEnd 
+AttributeBegin 
+AttributeEnd 
+AttributeBegin 
+AttributeEnd 
+AttributeBegin 
+AttributeEnd 
+AttributeBegin 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["pPlane1"]
+ConcatTransform [ 15.6408 0 0 0  0 15.6408 0 0  0 0 15.6408 0  0 0 0 1 ]
+AttributeBegin 
+AttributeBegin 
+Attribute "identifier" "string name" ["pPlaneShape1"]
+Attribute "identifier" "float id" [5]
+Sides 2
+ShadingInterpolation "smooth"
+Attribute "user" "int receivesShadows" [1]
+Attribute "visibility" "int camera" [1] "int specular" [1] "int diffuse" [1] "int transmission" [1]
+Attribute "shade" "string transmissionhitmode" ["shader"]
+Attribute "grouping" "string membership" ["+reflection,refraction,shadow"]
+##RLF Inject SurfaceShading -attribute sets@,initialShadingGroup,
+TransformBegin 
+Procedural2 "DelayedReadArchive2" "SimpleBound" "string filename" ["renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape1.job.rib"] "float[6] bound" [-0.5 0.5 -1.11022e-16 0.183822 -0.5 0.5] "int __immediatesubdivide" [0]
+TransformEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["testHairCollection"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeBegin 
+Attribute "identifier" "string name" ["description5"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeBegin 
+AttributeBegin 
+Attribute "identifier" "string name" ["description5Shape"]
+Attribute "identifier" "float id" [3]
+Sides 2
+ShadingInterpolation "smooth"
+Attribute "user" "int receivesShadows" [1]
+Attribute "visibility" "int camera" [1] "int specular" [0] "int diffuse" [0] "int transmission" [1]
+Attribute "shade" "string transmissionhitmode" ["shader"]
+Attribute "grouping" "string membership" ["+shadow"]
+##RLF Inject SurfaceShading -attribute sets@,RMSHair1SG,
+TransformBegin 
+ReadArchive "renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/description5Shape.job.rib" 
+TransformEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["pPlane1_description5"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeBegin 
+AttributeBegin 
+Attribute "identifier" "string name" ["pPlane1_description5Shape"]
+Attribute "identifier" "float id" [4]
+Sides 2
+ShadingInterpolation "smooth"
+Attribute "user" "int receivesShadows" [1]
+Attribute "visibility" "int camera" [1] "int specular" [0] "int diffuse" [0] "int transmission" [1]
+Attribute "shade" "string transmissionhitmode" ["shader"]
+Attribute "grouping" "string membership" ["+shadow"]
+##RLF Inject SurfaceShading -attribute sets@,initialShadingGroup,
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["pPlane2"]
+ConcatTransform [ 15.6408 0 0 0  0 15.6408 0 0  0 0 15.6408 0  0 0 -16.1939 1 ]
+AttributeBegin 
+AttributeBegin 
+Attribute "identifier" "string name" ["pPlaneShape2"]
+Attribute "identifier" "float id" [6]
+Sides 2
+ShadingInterpolation "smooth"
+Attribute "user" "int receivesShadows" [1]
+Attribute "visibility" "int camera" [1] "int specular" [1] "int diffuse" [1] "int transmission" [1]
+Attribute "shade" "string transmissionhitmode" ["shader"]
+Attribute "grouping" "string membership" ["+reflection,refraction,shadow"]
+##RLF Inject SurfaceShading -attribute sets@,CalicoCat,initialShadingGroup,
+AttributeBegin 
+Sides 1
+ShadingInterpolation "smooth"
+Attribute "user" "int receivesShadows" [1]
+Attribute "visibility" "int camera" [1] "int specular" [0] "int diffuse" [0] "int transmission" [1]
+Attribute "shade" "string transmissionhitmode" ["shader"]
+Attribute "grouping" "string membership" ["+shadow"]
+TransformBegin 
+ReadArchive "renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_0_attr.job.rib" 
+Procedural2 "DelayedReadArchive2" "SimpleBound" "string filename" ["renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_0.job.rib"] "float[6] bound" [-7.81626 7.82006 -0.2 1.93536 0.582189 7.82026] "int __immediatesubdivide" [0]
+TransformEnd 
+TransformBegin 
+ReadArchive "renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_1_attr.job.rib" 
+Procedural2 "DelayedReadArchive2" "SimpleBound" "string filename" ["renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_1.job.rib"] "float[6] bound" [-7.81967 7.81644 -0.19998 2.87015 -0.199833 4.69145] "int __immediatesubdivide" [0]
+TransformEnd 
+TransformBegin 
+ReadArchive "renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_2_attr.job.rib" 
+Procedural2 "DelayedReadArchive2" "SimpleBound" "string filename" ["renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_2.job.rib"] "float[6] bound" [-7.81916 7.81758 -0.199969 2.85009 -4.6921 0.1999] "int __immediatesubdivide" [0]
+TransformEnd 
+TransformBegin 
+ReadArchive "renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_3_attr.job.rib" 
+Procedural2 "DelayedReadArchive2" "SimpleBound" "string filename" ["renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2_CalicoCat_3.job.rib"] "float[6] bound" [-7.82008 7.81369 -0.2 1.95234 -7.82021 -0.582047] "int __immediatesubdivide" [0]
+TransformEnd 
+AttributeEnd 
+TransformBegin 
+Procedural2 "DelayedReadArchive2" "SimpleBound" "string filename" ["renderman/untitled/rib/job/staticGeoCache.job.zip!renderman/untitled/rib/job/pPlaneShape2.job.rib"] "float[6] bound" [-0.5 0.5 -1.11022e-16 0.183822 -0.5 0.5] "int __immediatesubdivide" [0]
+TransformEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["FurFeedback"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeBegin 
+Attribute "identifier" "string name" ["CalicoCat_FurFeedback"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeBegin 
+AttributeBegin 
+Attribute "identifier" "string name" ["CalicoCat_FurFeedbackShape"]
+Attribute "identifier" "float id" [1]
+Sides 2
+ShadingInterpolation "constant"
+Attribute "user" "int receivesShadows" [1]
+Attribute "visibility" "int camera" [1] "int specular" [1] "int diffuse" [1] "int transmission" [1]
+Attribute "shade" "string transmissionhitmode" ["shader"]
+Attribute "grouping" "string membership" ["+reflection,refraction,shadow"]
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["RMSGeoAreaLight1"]
+ConcatTransform [ 0.963051 0.0786025 0.257592 0  0.0786025 0.832786 -0.547987 0  -0.257592 0.547987 0.795837 0  0 12.3709 5.18461 1 ]
+AttributeBegin 
+AttributeEnd 
+AttributeEnd 
+AttributeBegin 
+Attribute "identifier" "string name" ["CubeCompass"]
+ConcatTransform [ 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1 ]
+AttributeEnd 
+##RLF ScopeEnd -name perspShape_Rerender
+WorldEnd 
+ResourceEnd 
+##streammarker 21
+FrameEnd 
