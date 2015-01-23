@@ -10,14 +10,14 @@ windowPref -topLeftCorner 250 200 -widthHeight 524 470 -maximized false devicePa
 windowPref -topLeftCorner 73 424 -widthHeight 1167 857 -maximized false hyperShadePanel1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false dynPaintScriptedPanelWindow;
 windowPref -topLeftCorner 250 200 -widthHeight 550 562 -maximized false blindDataEditor1Window;
-windowPref -topLeftCorner 22 18 -widthHeight 1477 959 -maximized false MayaWindow;
+windowPref -topLeftCorner 23 37 -widthHeight 1477 959 -maximized false MayaWindow;
 windowPref -topLeftCorner 364 562 -widthHeight 440 42 -maximized false greasePencilFloatingWindow;
 windowPref -topLeftCorner 627 351 -widthHeight 778 645 -maximized false RRM_Window;
 windowPref -topLeftCorner 270 361 -widthHeight 665 500 -maximized false PreferencesWindow;
 windowPref -topLeftCorner 165 282 -widthHeight 919 746 -maximized false pluginManagerWindow;
 windowPref -topLeftCorner 493 853 -widthHeight 305 605 -maximized false dpAutoRigWindow;
 windowPref -topLeftCorner 493 853 -widthHeight 674 253 -maximized false PluginInfoWin;
-windowPref -topLeftCorner 261 108 -widthHeight 1399 427 -maximized false scriptEditorPanel1Window;
+windowPref -topLeftCorner 706 164 -widthHeight 1399 386 -maximized false scriptEditorPanel1Window;
 windowPref -topLeftCorner 493 853 -widthHeight 406 400 -maximized false zooShotsWindow;
 windowPref -topLeftCorner 493 853 -widthHeight 180 275 -maximized false cgmLocinatorWindow;
 windowPref -topLeftCorner 493 853 -widthHeight 275 400 -maximized false cgmSetToolsWindow;
@@ -26,7 +26,7 @@ windowPref -topLeftCorner 493 853 -widthHeight 305 165 -maximized false zooKeyma
 windowPref -topLeftCorner 493 853 -widthHeight 300 300 -maximized false cgmToolbox;
 windowPref -topLeftCorner 102 275 -widthHeight 754 715 -maximized false HotkeyEditor;
 windowPref -topLeftCorner 364 562 -widthHeight 358 150 -maximized false LayerEditorQuickEditWindow;
-windowPref -topLeftCorner 215 857 -widthHeight 546 572 -maximized false OptionBoxWindow;
+windowPref -topLeftCorner 215 857 -widthHeight 546 350 -maximized false OptionBoxWindow;
 windowPref -topLeftCorner 340 136 -widthHeight 888 549 -maximized false shelfEditor;
 windowPref -topLeftCorner 364 562 -widthHeight 416 287 -maximized false panelArrangementWin;
 windowPref -topLeftCorner 364 562 -widthHeight 250 390 -maximized false QuickLayoutImageEditor;
