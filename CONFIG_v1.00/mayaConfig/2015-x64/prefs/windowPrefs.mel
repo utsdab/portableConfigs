@@ -7,10 +7,10 @@ windowPref -topLeftCorner 206 386 -widthHeight 973 309 -maximized false graphEdi
 windowPref -topLeftCorner 250 200 -widthHeight 660 400 -maximized false dopeSheetPanel1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 660 400 -maximized false clipEditorPanel1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 524 470 -maximized false devicePanel1Window;
-windowPref -topLeftCorner 73 424 -widthHeight 1167 857 -maximized false hyperShadePanel1Window;
+windowPref -topLeftCorner 1120 2009 -widthHeight 1167 857 -maximized false hyperShadePanel1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false dynPaintScriptedPanelWindow;
 windowPref -topLeftCorner 250 200 -widthHeight 550 562 -maximized false blindDataEditor1Window;
-windowPref -topLeftCorner 22 18 -widthHeight 1477 959 -maximized false MayaWindow;
+windowPref -topLeftCorner 119 1968 -widthHeight 2099 973 -maximized false MayaWindow;
 windowPref -topLeftCorner 364 562 -widthHeight 440 42 -maximized false greasePencilFloatingWindow;
 windowPref -topLeftCorner 627 351 -widthHeight 778 645 -maximized false RRM_Window;
 windowPref -topLeftCorner 270 361 -widthHeight 665 500 -maximized false PreferencesWindow;
@@ -32,7 +32,7 @@ windowPref -topLeftCorner 364 562 -widthHeight 416 287 -maximized false panelArr
 windowPref -topLeftCorner 364 562 -widthHeight 250 390 -maximized false QuickLayoutImageEditor;
 windowPref -topLeftCorner 364 562 -widthHeight 403 438 -maximized false Viewport20OptionsWindow;
 windowPref -topLeftCorner 404 165 -widthHeight 1478 696 -maximized false componentEditorPanel1Window;
-windowPref -topLeftCorner 524 594 -widthHeight 1000 660 -maximized false renderViewWindow;
+windowPref -topLeftCorner 606 2985 -widthHeight 1613 1152 -maximized false renderViewWindow;
 windowPref -topLeftCorner 306 842 -widthHeight 542 722 -maximized false unifiedRenderGlobalsWindow;
 windowPref -topLeftCorner 293 46 -widthHeight 794 544 -maximized false polyTexturePlacementPanel1Window;
 windowPref -topLeftCorner 680 254 -widthHeight 183 321 -maximized false mirMe;
