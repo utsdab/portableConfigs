@@ -84,7 +84,7 @@ global proc shelf_RenderMan () {
     ;
     shelfButton
         -enableCommandRepeat 1
-        -enable 1
+        -enable 0
         -width 35
         -height 35
         -manage 1
@@ -114,7 +114,7 @@ global proc shelf_RenderMan () {
         -width 35
         -height 35
         -manage 1
-        -visible 0
+        -visible 1
         -preventOverride 0
         -annotation "Pause IPR" 
         -enableBackground 0
@@ -140,7 +140,7 @@ global proc shelf_RenderMan () {
         -width 35
         -height 35
         -manage 1
-        -visible 0
+        -visible 1
         -preventOverride 0
         -annotation "Stop IPR" 
         -enableBackground 0

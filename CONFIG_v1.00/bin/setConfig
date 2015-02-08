@@ -6,7 +6,7 @@
 # Modules setup TCL  add these portable module files to be found
 module use ${CONFIG}/etc/modulefiles
 
-module load dab/central
+# module load dab/central
 module load dab/portable
 echo ""
 module avail
