@@ -32,7 +32,7 @@ windowPref -topLeftCorner 364 562 -widthHeight 416 287 -maximized false panelArr
 windowPref -topLeftCorner 364 562 -widthHeight 250 390 -maximized false QuickLayoutImageEditor;
 windowPref -topLeftCorner 364 562 -widthHeight 403 438 -maximized false Viewport20OptionsWindow;
 windowPref -topLeftCorner 404 165 -widthHeight 1478 696 -maximized false componentEditorPanel1Window;
-windowPref -topLeftCorner 524 594 -widthHeight 1000 660 -maximized false renderViewWindow;
+windowPref -topLeftCorner 272 57 -widthHeight 1000 660 -maximized false renderViewWindow;
 windowPref -topLeftCorner 306 842 -widthHeight 542 722 -maximized false unifiedRenderGlobalsWindow;
 windowPref -topLeftCorner 293 46 -widthHeight 794 544 -maximized false polyTexturePlacementPanel1Window;
 windowPref -topLeftCorner 680 254 -widthHeight 183 321 -maximized false mirMe;

@@ -3,7 +3,6 @@
 # this is the confirm dialog to the initialiser
 ####################################################
 
-
 CWD=$(pwd)
 echo ">>> STARTING UTS STUDIO CONFIGURATION: "${USER}"@"$CWD
 farm_config="__CENTRAL_CONFIGS__"
