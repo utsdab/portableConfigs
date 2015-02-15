@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<RenderManLookFile Version="1" Format="RenderMan Look Data" AssemblyName="perspShape_Rerender">
+    <InjectablePayloads>
+        <Payload Id="RMSHair1SG" Label="" Source="1" Content="1"><![CDATA[##RenderMan RIB
+version 3.04
+IfBegin "!defined(user:shader_bindingstrength) || $user:shader_bindingstrength <= 0" 
+Displacement "null" 
+ShadingRate 10
+Attribute "dice" "int hair" [1] "int roundcurve" [1]
+Surface "renderman/untitled/shaders/RMSHair1_rfm" "float NumSamples" [8] "float LightingSamples" [8] "color DiffuseRootColor" [1 1 1] "color DiffuseTipColor" [1 1 1] "float useShaderOpacity" [0] "color rootOpacity" [1 1 1] 
+"color tipOpacity" [1 1 1] "float __computesOpacity" [0] "float DiffuseGain" [0.5] "color SpecularColor" [1 1 1] "color TransmitColor" [0.318547 0.214041 0.132868] "float Alpha" [7.5] 
+"float Beta" [7.5] "float IorRefl" [0.04] "__instanceid" ["renderman/untitled/shaders/RMSHair1_rfm_0"]
+VPInterior "null" 
+Interior "null" 
+Attribute "user" "int shader_bindingstrength" [0]
+IfEnd 
+]]></Payload>
+        <Payload Id="initialShadingGroup" Label="" Source="1" Content="1"><![CDATA[##RenderMan RIB
+version 3.04
+IfBegin "!defined(user:shader_bindingstrength) || $user:shader_bindingstrength <= 0" 
+Displacement "null" 
+Matte 0
+Surface "renderman/untitled/shaders/lambert1_rfm" "color lambert1_c" [0.214041 0.214041 0.214041] "float lambert1_dc" [0.8] "string lambert1_SSPassid" [""] "string lambert1_SSConversionClass" [""] "string lambert1_rman__SSOutputFile" [""] "string lambert1_rman__SSMap" [""] "string rfmSurface__bakeMap" [""] "__instanceid" ["renderman/untitled/shaders/lambert1_rfm_0"]
+VPInterior "null" 
+Interior "null" 
+Attribute "user" "int shader_bindingstrength" [0]
+IfEnd 
+]]></Payload>
+    </InjectablePayloads>
+    <TightBindings>
+        <Binding Key="pPlane1/pPlaneShape1" PayloadId="initialShadingGroup"/>
+        <Binding Key="testHairCollection/description5/description5Shape" PayloadId="RMSHair1SG"/>
+        <Binding Key="testHairCollection/description5/pPlane1_description5/pPlane1_description5Shape" PayloadId="initialShadingGroup"/>
+        <Binding Key="pPlane2/pPlaneShape2" PayloadId="initialShadingGroup"/>
+    </TightBindings>
+</RenderManLookFile>
