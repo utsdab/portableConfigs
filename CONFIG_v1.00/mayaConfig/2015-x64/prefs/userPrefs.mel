@@ -1663,8 +1663,11 @@ optionVar
  -sv "keyframeRegionSelectKeyContext" "keyframeRegionSelectKeyCtx -e -image1 \"vacantCell.png\" -image2 \"vacantCell.png\" -image3 \"vacantCell.png\" keyframeRegionSelectKeyContext"
  -sv "keyframeRegionSetKeyContext" "keyframeRegionSetKeyCtx -e -image1 \"vacantCell.png\" -image2 \"vacantCell.png\" -image3 \"vacantCell.png\" -breakdown 0\nkeyframeRegionSetKeyContext"
  -sv "keyframeRegionTrackContext" "keyframeRegionTrackCtx -e -image1 \"vacantCell.png\" -image2 \"vacantCell.png\" -image3 \"vacantCell.png\" keyframeRegionTrackContext"
+<<<<<<< Updated upstream
  -sv "lastLocalWS" "/Users/Shared/UTS_Dev/gitRepositories/utsdab/portableConfigs/CONFIG_v1.00/mayaConfig/projects/default"
+=======
  -sv "lastLocalWS" "/Users/Shared/UTS_Jobs/UTS_TheLastXwing"
+>>>>>>> Stashed changes
  -sv "lastSaveImageAsFileType" "PNG";
 optionVar
  -iv "latticeAutoParent" 0
