@@ -1,0 +1,11 @@
+// requires maya "2015";
+startAttrPreset( "RenderMan" );
+blendAttrStr "rman__torattr___class" "ShadowZ"; 
+blendAttrStr "rman__torattr___task" "display"; 
+blendAttrStr "rman__torattr___dspyID" "${DSPYCHAN}"; 
+blendAttrStr "rman__riopt__Display_name" "[passinfo this filename]"; 
+blendAttrStr "rman__riopt__Display_type" "shadow"; 
+blendAttrStr "rman__riopt__Display_mode" "z"; 
+blendAttr "rman__torattr___computeBehavior" 1; 
+blendAttr "rman__torattr___primaryDisplay" 1; 
+endAttrPreset();
