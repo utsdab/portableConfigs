@@ -1,6 +1,0 @@
-2015-03-16 20:11:59: LOG: Export: /Users/Shared/UTS_Jobs/TESTING_renderfarm/testFarm/scenes/dottyRMS.0052.fbx
-2015-03-16 20:11:59: LOG: [WARNING] Unable to export some material(s) - The plug-in does not support the following material types:
- Material PxrLMPlastic2 will be exported as a grey Lambert material. Material hair_mtl1 will be exported as a grey Lambert material. Material PxrLMDiffuse3 will be exported as a grey Lambert material. Material PxrLMGlass1 will be exported as a grey Lambert material. Material PxrLMPlastic1 will be exported as a grey Lambert material. Material PxrConstant1 will be exported as a grey Lambert material. Material PxrDisney1 will be exported as a grey Lambert material. Material PxrLMPlastic3 will be exported as a grey Lambert material. Material PxrLMDiffuse4 will be exported as a grey Lambert material.
-2015-03-16 20:14:44: LOG: Export: /Users/Shared/UTS_Jobs/TESTING_renderfarm/testFarm/scenes/dottyMaya.0052.fbx
-2015-03-16 20:15:28: LOG: Export: /Users/Shared/UTS_Jobs/TESTING_renderfarm/testFarm/scenes/dottyMaya.0052.fbx
-2015-04-26 20:31:35: LOG: Export: /Users/Shared/UTS_Jobs/LEARNING_mudbox/maya/scenes/plane.0001.fbx
