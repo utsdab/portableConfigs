@@ -1,0 +1,15 @@
+// requires maya "2015";
+startAttrPreset( "RenderMan" );
+blendAttrStr "rman__torattr___class" "DeepShadow"; 
+blendAttrStr "rman__torattr___task" "display"; 
+blendAttrStr "rman__torattr___dspyID" "${DSPYCHAN}"; 
+blendAttrStr "rman__riopt__Display_name" "+[passinfo this filename -channel $DSPYCHAN]"; 
+blendAttrStr "rman__riopt__Display_type" "deepshad"; 
+blendAttrStr "rman__riopt__Display_filter" "box"; 
+blendAttrStr "rman__riopt__Display_mode" "deepopacity"; 
+blendAttrStr "rman__riopt__Display_volumeinterpretation" "discrete"; 
+blendAttr "rman__torattr___computeBehavior" 1; 
+blendAttr "rman__torattr___primaryDisplay" 0; 
+blendAttr "rman__riopt__Display_filterwidth0" 1; 
+blendAttr "rman__riopt__Display_filterwidth1" 1; 
+endAttrPreset();
