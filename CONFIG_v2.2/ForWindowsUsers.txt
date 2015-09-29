@@ -1,0 +1,4 @@
+# Follow these basics for getting windows to work
+#
+
+1. You will need to set an environment variable called MAYA_APP_DIR that points to the mayaConfig directory inside the CONFIG directory.
