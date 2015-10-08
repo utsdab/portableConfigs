@@ -1,1 +1,0 @@
-select -r `ls -type "unknown"`;

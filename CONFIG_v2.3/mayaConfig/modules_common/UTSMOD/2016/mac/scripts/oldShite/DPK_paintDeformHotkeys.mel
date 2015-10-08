@@ -1,0 +1,165 @@
+//----------------------------------------------------------------------------
+// Copyright © 2007, Daniel Pook-Kolb
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+//   - Redistributions of source code must retain the above copyright notice,
+//     this list of conditions and the following disclaimer.
+//
+//   - Redistributions in binary form must reproduce the above copyright
+//     notice, this list of conditions and the following disclaimer in the
+//     documentation and/or other materials provided with the distribution.
+//
+//   - Neither the name of the author nor the names of its contributors may be
+//     used to endorse or promote products derived from this software without
+//     specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//----------------------------------------------------------------------------
+//
+//
+//----------------------------------------------------------------------------
+//  DPK_paintDeformHotkeys.mel
+//
+//  Author:			Daniel Pook-Kolb
+//					daniel@dpk.stargrav.com
+//
+//  File Version:	4
+//  Last Change:	Mar 21, 2007
+//
+//  Description:
+//      Registers two hotkey commands so that they can be assigned an actual
+//      hotkey in the Hotkey Editor.
+//
+//      The two commands are:
+//          DPK_UpperRadius_PaintDeformMM_Press
+//          DPK_UpperRadius_PaintDeformMM_Release
+//      They will appear in the "User" category in the Hotkey Editor.
+//
+//      You should assign "b" as the hotkey for the first, and "b Release" as
+//      the hotkey for the second command. This will replace the
+//      'ModifyUpperRaius' command that is mapped to "b" by default.
+//
+//      Note that you still get the same 'ModifyUpperRaius' behaviour, because
+//      the new DPK_ commands execute the same code and just add their own to
+//      create a new marking menu on the middle mouse button while "b" is
+//      pressed. This means that you don't loose the functionality of their
+//      previous assignment.
+//
+//  Usage:
+//      Simply type "DPK_paintDeformHotkeys;" on the command line to register
+//      the hotkey commands. Note that no hotkeys are assigned, the commands
+//      are just made available in the "User" section of the Hotkey Editor.
+//
+//  Return:			none
+//
+//  Files Needed:
+//					DPK_registerHotkeys.mel
+//					DPK_generalHotkeys.mel
+//					DPK_arrayTools.mel
+//					DPK_findInAllNamespaces.mel
+//					DPK_paintDeform.mel
+//					DPK_paintDeformMM.mel
+//					DPK_paintDeformMM_addObjects.mel
+//
+//----------------------------------------------------------------------------
+
+
+//------------------------------
+//------------------------------
+//
+//  Local Worker Procedures {{{1
+//
+//------------------------------
+//------------------------------
+
+//------------------------------
+// DPK_L_registerCommand {{{2
+//------------------------------
+proc DPK_L_registerCommand( string $name, string $ann, string $cmd )
+//------------------------------
+{
+//--//
+// Make sure the command doesn't exist.
+if( `runTimeCommand -ex $name` ) {
+	return;
+}
+
+// Create the runtime command that does the work.
+runTimeCommand
+	-annotation $ann
+	-category   "User"
+	-command    $cmd
+	$name;
+
+// Create the named command that shows up in the hotkey editor.
+nameCommand
+	-annotation ($name+"NameCommand")
+	-command    ($name)
+	($name+"NameCommand");
+//--//
+}
+//---- end "DPK_L_registerCommand" ----// }}}2
+
+
+// }}}1
+
+
+//------------------------------
+//------------------------------
+//
+//  Global Procedures {{{1
+//
+//------------------------------
+//------------------------------
+
+////////////////////////////////
+//------------------------------
+// DPK_paintDeformHotkeys {{{2
+//------------------------------
+////////////////////////////////
+global proc DPK_paintDeformHotkeys()
+////////////////////////////////
+{
+//--//
+// Marking Menu for choosing a paintDeform reference target object.
+DPK_L_registerCommand "DPK_UpperRadius_PaintDeformMM_Press"
+	"Activate Modify Upper Brush Radius (Press) / Modify Paint Effect Brush Scale / Right click to choose new paintDeform target"
+	"if( catch(`artActivateScreenSlider \"upper_radius\"`) ) {print \"\";}\n{\n    // Set these to correspond with your hotkey modifiers.\n    int $ctrl  = 0;\n    int $alt   = 0;\n    int $shift = 0;\n    DPK_paintDeformMM 2 $ctrl $alt $shift;\n}"
+;
+DPK_L_registerCommand "DPK_UpperRadius_PaintDeformMM_Release"
+	""
+	"if( catch(`artDeactivateScreenSlider`) ) {print \"\";}\nif( `popupMenu -exists dpkMM` ) { deleteUI dpkMM; }"
+;
+//--//
+}
+//---- end "DPK_paintDeformHotkeys" ----// }}}2
+
+
+// }}}1
+
+
+//------------------------------
+// Configure Vim {{{3
+//
+// If you're wondering why there are places with three curly braces ("{" or
+// "}") with a number in comments, these are used by vim to do automatic
+// folding (hiding lines).
+//
+// If you don't know what vim is, check out:
+//    http://www.vim.org
+//
+// These settings will configure vim to display this file correctly.
+// vim:set ts=4 tw=78 fdm=marker fdl=1 fdc=3:
