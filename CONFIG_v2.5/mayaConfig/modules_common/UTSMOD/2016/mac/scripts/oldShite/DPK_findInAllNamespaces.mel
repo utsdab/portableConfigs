@@ -1,0 +1,210 @@
+//----------------------------------------------------------------------------
+// Copyright © 2008, Daniel Pook-Kolb
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+//   - Redistributions of source code must retain the above copyright notice,
+//     this list of conditions and the following disclaimer.
+//
+//   - Redistributions in binary form must reproduce the above copyright
+//     notice, this list of conditions and the following disclaimer in the
+//     documentation and/or other materials provided with the distribution.
+//
+//   - Neither the name of the author nor the names of its contributors may be
+//     used to endorse or promote products derived from this software without
+//     specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//----------------------------------------------------------------------------
+//
+//
+//--------------------------------------------------------------------------//
+//  DPK_findInAllNamespaces.mel
+//
+//  Author:			Daniel Pook-Kolb
+//					daniel@dpk.stargrav.com
+//
+//  Version:		1.0.1
+//  File Version:	2
+//  Last Change:	Sep 09, 2008
+//
+//  Description:	This script will search with the given $search string and
+//					collect all nodes it finds. The usual method is to use:
+//						sl "*.foo"
+//					to find all nodes with an attr "foo". The problem with
+//					this is that only the nodes in the current namespace are
+//					found. This script will iterate through all namespaces
+//					(and sub-namespaces) recursively and find the nodes of all
+//					namespaces.
+//
+//  Usage:			$search is the pattern used with the `sl $search`
+//					$flags is a string containing any additional flags for the
+//					ls command. Please note that it shouldn't contain the flag
+//					"-r", since this will be used automatically when the Maya
+//					version is >= 6.0.
+//
+//  Return:			string[] - The array with all nodes found.
+//
+//  Files Needed:	DPK_arrayTools.mel
+//
+//--------------------------------------------------------------------------//
+
+
+//------------------------------
+//------------------------------
+//
+//  Includes {{{1
+//
+//  Source the scripts which contain necessary procedures.
+//
+//------------------------------
+//------------------------------
+
+// This will source the DPK_arrayTools script only when it wasn't yet.
+DPK_arrayTools;
+
+// }}}1
+
+
+//------------------------------
+//------------------------------
+//
+//  Local Worker Procedures {{{1
+//
+//------------------------------
+//------------------------------
+
+//------------------------------
+// DPK_L_convertVersionString {{{2
+//
+// Converts a string like "1.0.1 x64" into the float "1.01".
+//------------------------------
+proc float DPK_L_convertVersionString( string $verStr )
+//------------------------------
+{
+//--//
+// First, remove any substring after a space (contains e.g. "x64").
+$verStr = match( "^[0-9\.]*", $verStr );
+
+// Split the string up at the dots.
+string $toks[];
+tokenize $verStr "." $toks;
+
+// Reset the version string to the first number. The remaining numbers will be
+// added after a dot (if there are any).
+$verStr = $toks[0];
+if( size($toks) > 1 ) {
+	$verStr += ".";
+}
+
+// Iterate through the remaining numbers and add them to the $verStr.
+int $x;
+for( $x = 1; $x < size($toks); ++$x ) {
+	$verStr += $toks[$x];
+}
+
+// Convert the string into a float and return it.
+float $version = $verStr;
+return $version;
+//--//
+}
+//---- end "DPK_L_convertVersionString" ----// }}}2
+
+
+// }}}1
+
+
+//------------------------------
+//------------------------------
+//
+//  Global Procedures {{{1
+//
+//------------------------------
+//------------------------------
+
+////////////////////////////////
+//------------------------------
+// DPK_findInAllNamespaces {{{2
+//------------------------------
+////////////////////////////////
+global proc string[] DPK_findInAllNamespaces( string $search, string $flags )
+////////////////////////////////
+{
+//--//
+// When we're running Maya 6.0 or higher, we can simply use the "-recursive"
+// flag of the "ls" command.
+if( DPK_L_convertVersionString(`about -v`) >= 6.0 ) {
+	// We have to reorder this array, so that the objects in the deepest
+	// namespaces are last.
+	string $objs[] = eval( "ls "+$flags+" -recursive 1 \""+$search+"\"" );
+	DPK_at_string_reverse( $objs );
+	return $objs;
+}
+
+// Store the current namespace.
+string $origNameSpace = `namespaceInfo -cur`;
+if( ":" != $origNameSpace ) {
+	$origNameSpace = (":"+$origNameSpace);
+}
+
+// Create an array which will get all the namespaces we find. We start with
+// just one namespace - the top most "" (the ":" will be added anyway).
+string $spaces[] = {""};
+
+// Iterate through them and recursivly get the nodes.
+string $objs[], $tmp[];
+int $x;
+for( $x = 0; $x < size($spaces); ++$x ) {
+	// Set the current namespace.
+	namespace -set (":"+$spaces[$x]);
+
+	// Find all nodes within this namespace.
+	$tmp = `eval("ls "+$flags+" \""+$spaces[$x]+":"+$search+"\"")`;
+
+	// The "ls" command returns the nodes in reversed DG order, so we reverse
+	// them back.
+	DPK_at_string_reverse( $tmp );
+
+	// Add them to the $objs array.
+	$objs = stringArrayCatenate( $objs, $tmp );
+
+	// Get the namespaces within this one and add them to $spaces.
+	$spaces = stringArrayCatenate( $spaces, `namespaceInfo -lon` );
+}
+
+// Restore the original namespace.
+namespace -set $origNameSpace;
+
+return $objs;
+//--//
+}
+//---- end "DPK_findInAllNamespaces" ----// }}}2
+
+
+// }}}1
+
+
+//------------------------------
+// Configure Vim {{{3
+//
+// If you're wondering why there are places with three curly braces ("{" or
+// "}") with a number in comments, these are used by vim to do automatic
+// folding (hiding lines).
+//
+// If you don't know what vim is, check out:
+//    http://www.vim.org
+//
+// These settings will configure vim to display this file correctly.
+//    vim:set ts=4 tw=78 fdm=marker fdl=1 fdc=3:

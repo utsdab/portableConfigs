@@ -1,0 +1,166 @@
+//----------------------------------------------------------------------------
+// Copyright © 2007, Daniel Pook-Kolb
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+//   - Redistributions of source code must retain the above copyright notice,
+//     this list of conditions and the following disclaimer.
+//
+//   - Redistributions in binary form must reproduce the above copyright
+//     notice, this list of conditions and the following disclaimer in the
+//     documentation and/or other materials provided with the distribution.
+//
+//   - Neither the name of the author nor the names of its contributors may be
+//     used to endorse or promote products derived from this software without
+//     specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//----------------------------------------------------------------------------
+//
+//
+//----------------------------------------------------------------------------
+//  DPK_generalHotkeys.mel
+//
+//  Author:			Daniel Pook-Kolb
+//					daniel@dpk.stargrav.com
+//
+//  File Version:	3
+//  Last Change:	Mar 20, 2007
+//
+//  Description:
+//      Registers several general purpose hotkey commands so that they can be
+//      assigned an actual hotkey in the Hotkey Editor.
+//
+//      The hotkey commands that are created are:
+//        DPK_toggleManipMode
+//        DPK_toggleWireframeOnShaded
+//        DPK_isolateToggle
+//        DPK_isolateAdd
+//        DPK_isolateRemove
+//
+//  Usage:
+//      Simply type "DPK_generalHotkeys;" on the command line to register the
+//      hotkey commands. Note that no hotkeys are assigned, the commands are
+//      just made available in the "User" section of the Hotkey Editor.
+//
+//  Return:			none
+//
+//  Files Needed:	DPK_registerHotkeys.mel
+//
+//----------------------------------------------------------------------------
+
+
+//------------------------------
+//------------------------------
+//
+//  Local Worker Procedures {{{1
+//
+//------------------------------
+//------------------------------
+
+//------------------------------
+// DPK_L_registerCommand {{{2
+//------------------------------
+proc DPK_L_registerCommand( string $name, string $ann, string $cmd )
+//------------------------------
+{
+//--//
+// Make sure the command doesn't exist.
+if( `runTimeCommand -ex $name` ) {
+	return;
+}
+
+// Create the runtime command that does the work.
+runTimeCommand
+	-annotation $ann
+	-category   "User"
+	-command    $cmd
+	$name;
+
+// Create the named command that shows up in the hotkey editor.
+nameCommand
+	-annotation ($name+"NameCommand")
+	-command    ($name)
+	($name+"NameCommand");
+//--//
+}
+//---- end "DPK_L_registerCommand" ----// }}}2
+
+
+// }}}1
+
+
+//------------------------------
+//------------------------------
+//
+//  Global Procedures {{{1
+//
+//------------------------------
+//------------------------------
+
+////////////////////////////////
+//------------------------------
+// DPK_generalHotkeys {{{2
+//------------------------------
+////////////////////////////////
+global proc DPK_generalHotkeys()
+////////////////////////////////
+{
+//--//
+// Toggle move-mode of the move tool.
+DPK_L_registerCommand "DPK_toggleManipMode"
+	"Toggles the mode of the current manipulator (e.g.: move-world <--> move-normal)"
+	"// Check, which tool we're currently in.\nif( currentCtx() == $gMove ) {\n    // We're using the move tool. Check, whether polyVerts are selected.\n    if( size(`filterExpand -sm 31`) ) {\n        // Yes, we've selected polyVertices. This means we should toggle\n        // between world and normal mode.\n        manipMoveContext -edit\n            -mode ((`manipMoveContext -q -mode \"Move\"` == 2) ? 3 : 2)\n            \"Move\";\n    } else {\n        // No, there are no poly vertices selected. Set the mode to world.\n        manipMoveContext -edit\n            -mode 2\n            \"Move\";\n    }\n}"
+;
+
+// Toggle wireframeOnShaded
+DPK_L_registerCommand "DPK_toggleWireframeOnShaded"
+	"Toggles the wireframeOnShaded mode of the current view"
+	"{ string $activePanel = `getPanel -wf`; if( size($activePanel) && \"modelPanel\" == `getPanel -to $activePanel` ) { modelEditor -e -wos (!`modelEditor -q -wos $activePanel`) $activePanel; } }"
+;
+
+// Commands for fast isolateSelect toggle/add/remove operations.
+DPK_L_registerCommand "DPK_isolateToggle"
+	"Toggles the isolateSelect state of the current modelPanel"
+	"{\n    string $currentPanel = `getPanel -withFocus`;\n    if( `getPanel -to $currentPanel` == \"modelPanel\" ) {\n        if( `isolateSelect -q -s $currentPanel` ) {\n            isolateSelect -s false $currentPanel;\n        } else {\n            enableIsolateSelect $currentPanel true;\n        }\n    }\n}"
+;
+DPK_L_registerCommand "DPK_isolateAdd"
+	"Adds selected objects/components to the isolateSelect mode"
+	"{\n    string $currentPanel = `getPanel -withFocus`;\n    if( `getPanel -to $currentPanel` == \"modelPanel\" ) {\n        if( !`isolateSelect -q -s $currentPanel` ) {\n            enableIsolateSelect $currentPanel true;\n        }\n        isolateSelect -addSelected $currentPanel;\n    }\n}"
+;
+DPK_L_registerCommand "DPK_isolateRemove"
+	"Removes the selected objects/components from the isolateSelect mode"
+	"{\n    string $currentPanel = `getPanel -withFocus`;\n    if( `getPanel -to $currentPanel` == \"modelPanel\" ) {\n        if( `isolateSelect -q -s $currentPanel` ) {\n            isolateSelect -removeSelected $currentPanel;\n        }\n    }\n}"
+;
+//--//
+}
+//---- end "DPK_generalHotkeys" ----// }}}2
+
+
+// }}}1
+
+
+//------------------------------
+// Configure Vim {{{3
+//
+// If you're wondering why there are places with three curly braces ("{" or
+// "}") with a number in comments, these are used by vim to do automatic
+// folding (hiding lines).
+//
+// If you don't know what vim is, check out:
+//    http://www.vim.org
+//
+// These settings will configure vim to display this file correctly.
+// vim:set ts=4 tw=78 fdm=marker fdl=1 fdc=3:
