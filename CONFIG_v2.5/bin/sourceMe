@@ -25,13 +25,9 @@ else
 	echo ">>> WARNING:  No CONFIG found"
 fi
 
-<<<<<<< Updated upstream
-if [ -e ${DABUSR}/custom/maya ] ; then
-	source ${DABUSR}/etc/profile_local_extra
-=======
 if [ -e ${DABUSR}/etc/profile_local_extra ] ; then
 	. ${DABUSR}/etc/profile_local_extra
->>>>>>> Stashed changes
+
 fi
 
 if [ ! ${DABRENDERPATH} ]; then
