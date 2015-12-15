@@ -22,17 +22,25 @@ if [ -e ${CWD}/bin/introduction ] ; then
 	echo ">>> INFO: CONFIG=${CONFIG}"
 	source ${CONFIG}/bin/introduction
 else
-    #export CONFIG="${DABRENDERPATH}/usr/custom/maya"
 	echo ">>> WARNING:  No CONFIG found"
 fi
 
+<<<<<<< Updated upstream
 if [ -e ${DABUSR}/custom/maya ] ; then
 	source ${DABUSR}/etc/profile_local_extra
+=======
+if [ -e ${DABUSR}/etc/profile_local_extra ] ; then
+	. ${DABUSR}/etc/profile_local_extra
+>>>>>>> Stashed changes
 fi
 
 if [ ! ${DABRENDERPATH} ]; then
-    echo "CRITICAL: Cant set profile correctly from central or local"
+        echo "CRITICAL: Cant set DABRENDERPATH correctly from central or local"
 	unset DABRENDERPATH
+fi
+if [ ! ${DABUSR} ]; then
+        echo "CRITICAL: Cant set DABUSR correctly from central or local"
+	unset DABUSR
 fi
 
 

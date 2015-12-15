@@ -11,9 +11,15 @@ windowPref -topLeftCorner 59 211 -widthHeight 1628 935 -maximized false hyperSha
 windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false dynPaintScriptedPanelWindow;
 windowPref -topLeftCorner 250 200 -widthHeight 550 562 -maximized false blindDataEditor1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 1120 640 -maximized false polyTexturePlacementPanel1Window;
+<<<<<<< Updated upstream
 windowPref -topLeftCorner 178 744 -widthHeight 794 800 -maximized false pluginManagerWindow;
 windowPref -topLeftCorner 415 642 -widthHeight 550 700 -maximized false projectWindow;
 windowPref -topLeftCorner 40 116 -widthHeight 1545 1019 -maximized false MayaWindow;
+=======
+windowPref -topLeftCorner 258 631 -widthHeight 794 800 -maximized false pluginManagerWindow;
+windowPref -topLeftCorner 415 642 -widthHeight 550 700 -maximized false projectWindow;
+windowPref -topLeftCorner 23 226 -widthHeight 1521 1035 -maximized false MayaWindow;
+>>>>>>> Stashed changes
 windowPref -topLeftCorner 415 642 -widthHeight 450 320 -maximized false NewFeatureHighlightWnd;
 windowPref -topLeftCorner 400 130 -widthHeight 1790 621 -maximized false scriptEditorPanel1Window;
 windowPref -topLeftCorner 225 624 -widthHeight 1059 820 -maximized false renderManControlsWindow;
