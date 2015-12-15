@@ -20,15 +20,14 @@ fi
 if [ -e ${CWD}/bin/introduction ] ; then
 	export CONFIG=${CWD}
 	echo ">>> INFO: CONFIG=${CONFIG}"
-	
 	source ${CONFIG}/bin/introduction
 else
     #export CONFIG="${DABRENDERPATH}/usr/custom/maya"
 	echo ">>> WARNING:  No CONFIG found"
 fi
 
-if [ -e ${DABRENDERPATH}/usr/custom/maya ] ; then
-	source ${DABRENDERPATH}/usr/etc/profile_local_extra
+if [ -e ${DABUSR}/custom/maya ] ; then
+	source ${DABUSR}/etc/profile_local_extra
 fi
 
 if [ ! ${DABRENDERPATH} ]; then

@@ -11,11 +11,11 @@ windowPref -topLeftCorner 59 211 -widthHeight 1628 935 -maximized false hyperSha
 windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false dynPaintScriptedPanelWindow;
 windowPref -topLeftCorner 250 200 -widthHeight 550 562 -maximized false blindDataEditor1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 1120 640 -maximized false polyTexturePlacementPanel1Window;
-windowPref -topLeftCorner 378 631 -widthHeight 794 800 -maximized false pluginManagerWindow;
+windowPref -topLeftCorner 178 744 -widthHeight 794 800 -maximized false pluginManagerWindow;
 windowPref -topLeftCorner 415 642 -widthHeight 550 700 -maximized false projectWindow;
-windowPref -topLeftCorner 23 282 -widthHeight 1521 1044 -maximized false MayaWindow;
+windowPref -topLeftCorner 40 116 -widthHeight 1545 1019 -maximized false MayaWindow;
 windowPref -topLeftCorner 415 642 -widthHeight 450 320 -maximized false NewFeatureHighlightWnd;
-windowPref -topLeftCorner 242 209 -widthHeight 1605 621 -maximized false scriptEditorPanel1Window;
+windowPref -topLeftCorner 400 130 -widthHeight 1790 621 -maximized false scriptEditorPanel1Window;
 windowPref -topLeftCorner 225 624 -widthHeight 1059 820 -maximized false renderManControlsWindow;
 windowPref -topLeftCorner 415 642 -widthHeight 230 60 -maximized false cometAttrEditorWin;
 windowPref -topLeftCorner 415 642 -widthHeight 300 500 -maximized false cometSkinWeightWin;
@@ -33,6 +33,8 @@ windowPref -topLeftCorner 364 919 -widthHeight 665 500 -maximized false Preferen
 windowPref -topLeftCorner 415 642 -widthHeight 398 100 -maximized false saveNodePresetDialogWindow;
 windowPref -topLeftCorner 548 245 -widthHeight 546 350 -maximized false OptionBoxWindow;
 windowPref -topLeftCorner 415 642 -widthHeight 366 341 -maximized false rmanRerenderOptionsWnd;
-windowPref -topLeftCorner 557 73 -widthHeight 750 594 -maximized false renderViewWindow;
+windowPref -topLeftCorner 584 156 -widthHeight 750 594 -maximized false renderViewWindow;
 windowPref -topLeftCorner 382 798 -widthHeight 732 387 -maximized false dynRelEdPanel1Window;
-windowPref -topLeftCorner 415 642 -widthHeight 390 412 -maximized false window1;
+windowPref -topLeftCorner 447 70 -widthHeight 390 412 -maximized false window1;
+windowPref -topLeftCorner 204 1130 -widthHeight 520 620 -maximized false connectWindow;
+windowPref -topLeftCorner 599 424 -widthHeight 800 527 -maximized false nodeEditorPanel1Window;
