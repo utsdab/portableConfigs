@@ -2,7 +2,6 @@
 # version 1.0 mattg
 # this is the confirm dialog to the initialiser
 ####################################################
-
 CWD=$(pwd)
 echo "STARTING UTS STUDIO CONFIGURATION: "${USER}"@"$CWD
 unset CONFIG
