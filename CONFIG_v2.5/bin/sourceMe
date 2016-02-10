@@ -1,0 +1,44 @@
+#!/bin/bash
+# version 1.0 mattg
+# this is the confirm dialog to the initialiser
+####################################################
+
+CWD=$(pwd)
+echo ">>> STARTING UTS STUDIO CONFIGURATION: "${USER}"@"$CWD
+unset CONFIG
+
+if [ -e ~/.startDirectory ] ; then
+	export STARTD=$(cat ~/.startDirectory)
+	echo ">>> INFO: STARTD=${STARTD}"
+else
+	echo ">>> WARNING:  No ~/.startDirctory found, $STARTD not set"
+fi
+
+################################################
+#	Set the local config is running from a thumbdrive
+
+if [ -e ${CWD}/bin/introduction ] ; then
+	export CONFIG=${CWD}
+	echo ">>> INFO: CONFIG=${CONFIG}"
+	source ${CONFIG}/bin/introduction
+else
+	echo ">>> WARNING:  No CONFIG found"
+fi
+
+if [ -e ${DABUSR}/etc/profile_local_extra ] ; then
+	. ${DABUSR}/etc/profile_local_extra
+
+fi
+
+if [ ! ${DABRENDERPATH} ]; then
+        echo "CRITICAL: Cant set DABRENDERPATH correctly from central or local"
+	unset DABRENDERPATH
+fi
+if [ ! ${DABUSR} ]; then
+        echo "CRITICAL: Cant set DABUSR correctly from central or local"
+	unset DABUSR
+fi
+
+
+
+
