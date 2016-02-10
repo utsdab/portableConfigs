@@ -7,8 +7,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -38,8 +38,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -69,8 +69,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -100,8 +100,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -131,8 +131,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -162,8 +162,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -193,8 +193,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -224,8 +224,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -255,8 +255,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -286,8 +286,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -317,8 +317,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -348,8 +348,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -379,8 +379,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
@@ -410,8 +410,8 @@ global proc shelf_XGen () {
     shelfButton
         -enableCommandRepeat 1
         -enable 1
-        -width 34
-        -height 34
+        -width 35
+        -height 35
         -manage 1
         -visible 1
         -preventOverride 0
