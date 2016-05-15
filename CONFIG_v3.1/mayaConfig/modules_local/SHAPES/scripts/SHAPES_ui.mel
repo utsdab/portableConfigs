@@ -1,0 +1,5009 @@
+// --------------------------------------------------------------------------------------------------
+//
+// SHAPES
+//
+// blend shape editing tool for Maya
+//
+// required plugins:
+//   SHAPESTools
+//
+// Ingo Clemens
+// www.braverabbit.com
+//
+// copyright brave rabbit, Ingo Clemens 2014-2016
+//
+// --------------------------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------------------------
+//
+// THE SOFTWARE PRODUCT IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR
+// IMPLIED, INCLUDING, BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+// PURPOSE AND NON-INFRINGEMENT OF THIRD-PARTY RIGHTS. THE ENTIRE RISK AS TO THE QUALITY AND
+// PERFORMANCE OF THE SOFTWARE PRODUCT IS WITH YOU.
+// NEITHER BRAVE RABBIT NOR ITS SUPPLIERS WARRANT THAT THE FUNCTIONS CONTAINED IN THE SOFTWARE
+// PRODUCT WILL MEET YOUR REQUIREMENTS OR THAT THE OPERATION OF THE SOFTWARE PRODUCT WILL BE
+// UNINTERRUPTED OR ERROR-FREE. BRAVE RABBIT IS NOT OBLIGATED TO PROVIDE ANY UPDATES TO THE
+// SOFTWARE.
+// IN NO EVENT SHALL THE AUTHOR OF THIS SOFTWARE PRODUCT BE LIABLE FOR ANY SPECIAL, CONSEQUENTIAL,
+// INCIDENTAL, DIRECT OR INDIRECT DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
+// LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, FOR PERSONAL INJURY, LOSS OF BUSINESS
+// INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THIS
+// PRODUCT, EVEN IF THE AUTHOR OF THIS SOFTWARE PRODUCT IS AWARE OF THE POSSIBILITY OF SUCH
+// DAMAGES AND KNOWN DEFECTS, ANY CLAIM BY A THIRD PARTY AND EVEN IF THE REMEDY FAILS OF ITS
+// ESSENTIAL PURPOSE.
+//
+// --------------------------------------------------------------------------------------------------
+
+
+// --------------------------------------------------------------------------------------------------
+// main ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildUI()
+{
+	global string $gShapes_compareSlider;
+	global string $gShapes_homeUrl;
+	global string $gShapes_learningUrl;
+	global string $gShapes_versionShort;
+	global string $gShapes_versionStudent;
+	global string $gShapes_sculptButtonLabel;
+	
+	// make sure all optionVars exist
+	shapesGlobal_setOptionVars 0;
+	
+	// define the area and float state of the dock control
+	string $dockArea = "right";
+	int $dockFloat = 0;
+	$dockArea = `optionVar -q SHAPESCurrentDockPosition`;
+	$dockFloat = `optionVar -q SHAPESCurrentDockFloat`;
+	
+	// delete the ui if it exists
+	shapesUI_removeUI;
+	
+	window -t ("SHAPES " + $gShapes_versionShort + $gShapes_versionStudent) -w 370 -mb 1 SHAPESDockWin;
+	
+	//-------------------
+	// menu bar
+	//-------------------
+	
+	menu -l "Display" -tearOff 1;
+		$value = `optionVar -q SHAPESShowUIWeightDriver`;
+		menuItem -l "Weight Driver" -sm 1 -tearOff 1 -en $value shpUI_weightDriverDisplayMenuItem;
+			menuItem -l "Show All Weight Driver Nodes" -c "shapesDriver_showHideWeightDriver v 1";
+			menuItem -l "Hide All Weight Driver Nodes" -c "shapesDriver_showHideWeightDriver v 0";
+			menuItem -d 1;
+			menuItem -l "Show All Weights" -c "shapesDriver_showHideWeightDriver drawWeight 1";
+			menuItem -l "Hide All Weights" -c "shapesDriver_showHideWeightDriver drawWeight 0";
+			menuItem -d 1;
+			menuItem -l "Activate All Weight Driver Nodes" -c "shapesDriver_showHideWeightDriver active 1";
+			menuItem -l "Deactivate All Weight Driver Nodes" -c "shapesDriver_showHideWeightDriver active 0";
+		setParent -m ..;
+	
+	menu -l "Tools" -tearOff 1;
+		menuItem -l "Check Symmetry" -c "br_performPolyMakeSymmetrical 0";
+		menuItem -ob 1 -c "br_performPolyMakeSymmetrical 1";
+		menuItem -d 1;
+		menuItem -l "Export Node Data..." -c "shapesUI_buildExportUI 1";
+	
+		menuItem -l "Import Node Data..." -sm 1 -pmc "shapesUtil_buildImportMenu shpUI_importMenuItem" shpUI_importMenuItem;
+			menuItem -l "None" -en 0;
+		setParent -m ..;
+	
+		menuItem -d 1;
+		menuItem -l "Transfer Setup..." -c "shapesUI_buildExportUI 0";
+	
+		menuItem -l "Tweak Transfer" -sm 1 -tearOff 1 -en 0 shpUI_tweakTransferMenuItem;
+			menuItem -l "Enter Skin Tweak Mode" -c shapesUtil_toggleTweakSkin shpUI_tweakSkinMenuItem;
+			menuItem -l "Update Selected Target From Wrapped Mesh" -c "shapesAction_addSelectionAsTarget 1 0 1";
+		setParent -m ..;
+	
+	menuItem -l "Connect Blend Shape Nodes..." -c shapesUI_connectBlendShapeNodeUI;
+	menuItem -l "Disconnect Current Blend Shape Node" -c shapesUtil_disconnectBlendShapeNodes;
+	menuItem -d 1;
+	menuItem -l "Set Weight Driver Source Position" -c shapesUtil_setWeightDriverMatrix;
+	menuItem -d 1;
+	
+	menuItem -l "Cleanup" -sm 1 -tearOff 1;
+		menuItem -l "Bake Tweaks To Original..." -c "shapesUtil_processTweakNode 1";
+		menuItem -l "Cleanup Tweak Node..." -c "shapesUtil_processTweakNode 0";
+		menuItem -l "Remove Orphan Target" -c shapesUtil_removeOrphanTarget;
+		menuItem -l "Reset Target List..." -c shapesUtil_clearTargetCustomData;
+		menuItem -l "Reset Driver List..." -c shapesUtil_clearDriverCustomData;
+		menuItem -d 1;
+		menuItem -l "Remove Reference Edits..." -c shapesUtil_removeReferenceEdits;
+	setParent -m ..;
+	
+	menu -l "Help" -tearOff 1;
+		menuItem -l "Tutorials" -c ("python(\"import webbrowser; webbrowser.open('" + $gShapes_learningUrl + "')\")");
+		menuItem -l "Documentation" -c shapesUI_openHelp;
+		menuItem -l "SHAPES Home Page" -c ("python(\"import webbrowser; webbrowser.open('" + $gShapes_homeUrl + "')\")");
+		menuItem -d 1;
+		menuItem -l "About" -c shapesUI_openAbout;
+	
+	scrollLayout -cr 1 shpUI_mainScrollLayout;
+	
+	//-------------------
+	// selection frame
+	//-------------------
+	
+	string $meshFrame = `frameLayout -l "Selection" -li 3 -cll 0 -cl 0 -mw 5 -mh 5`;
+		
+		// skin mesh form
+		string $meshForm = `formLayout`;
+			string $meshButton = `button -l "Load Mesh" -w 70 -ann "" -c "shapesMain_getSelection mesh" shpUI_meshNameButton`;
+			int $valueInt = `optionVar -q SHAPESSymmetryCheck`;
+			string $symCheckButton = `iconTextButton -w 26 -ann "Enable/disable symmetry check when loading a mesh. Checking is not performed when reloading the same mesh." -c "shapesUI_toggleSymmetryCheck (1 - `optionVar -q SHAPESSymmetryCheck`)" shpUI_symmetryCheckButton`;
+			shapesUI_toggleSymmetryCheck $valueInt;
+			string $bsForm = `formLayout shpUI_bsForm`;
+			setParent ..;
+			string $prefButton = `iconTextButton -w 26 -h 25 -i "SHAPES_preferences.png" -ann "Preferences" -c ("shapesUI_buildPreferencesUI; if (`optionVar -q SHAPESOrderBasedMirror`) shapesMirror_defineSymmetryCenter 0 0;")`;
+			formLayout	-e 
+						
+						-af $meshButton "top" 0 
+						-af $meshButton "left" 1 
+						-af $symCheckButton "top" 0 
+						-af $bsForm "top" 2 
+						-af $prefButton "top" 0 
+						-af $prefButton "right" 0 
+						
+						-ac $symCheckButton "left" 5 $meshButton 
+						-ac $bsForm "left" 5 $symCheckButton 
+						-ac $bsForm "right" 5 $prefButton 
+						
+						$meshForm;
+		setParent $meshFrame;
+	setParent ..;
+	
+	//-------------------
+	// target frame
+	//-------------------
+	
+	string $shapesFrame = `frameLayout -l "Target Shapes" -li 3 -cll 1 -cl 0 -mw 5 -mh 5`;
+	
+		// target search form
+		string $targetForm = `formLayout`;
+		
+			iconTextCheckBox	-h 25 
+								-i "SHAPES_filterLive.png" 
+								-onc "shapesJob_initializeDisplayValueScriptJob 1" 
+								-ofc "shapesJob_initializeDisplayValueScriptJob 0" 
+								-ann "Live show active shapes" 
+								shpUI_filterLiveCheck;
+			iconTextCheckBox	-h 25 
+								-i "SHAPES_filterActive.png" 
+								-onc "shapesUI_filterListByValue 0.001 0" 
+								-ofc "shapesUI_clearSearch target 1" 
+								-ann "Show only active shapes" 
+								shpUI_filterActiveCheck;
+			iconTextCheckBox	-h 25 
+								-i "SHAPES_filterMax.png" 
+								-onc "shapesUI_filterListByValue 1 0" 
+								-ofc "shapesUI_clearSearch target 1" 
+								-ann "Show only shapes at maximum" 
+								shpUI_filterMaxCheck;
+	
+			textFieldGrp	-l "" 
+							-ann "Enter search string. Use + for combinations." 
+							-cw2 0 155 
+							-ct2 "left" "right" 
+							-co2 0 0 
+							-ad2 2 
+							shpUI_targetSearchField;
+			string $clearButton = `iconTextButton -w 26 -h 25 -i "SHAPES_clear.png" -ann "Clear search" -c "shapesUI_clearSearch target 0"`;
+	
+			// change the text change command based on the maya version
+			if (`shapesGlobal_getMayaVersion` < 2014)
+				textFieldGrp -e -cc "shapesUI_searchJointString target" shpUI_targetSearchField;
+			else
+				textFieldGrp -e -tcc "shapesUI_searchJointString target" shpUI_targetSearchField;
+	
+			formLayout	-e 
+						
+						-af shpUI_filterLiveCheck "top" 0 
+						-af shpUI_filterLiveCheck "left" 1 
+						-af shpUI_filterActiveCheck "top" 0 
+						-af shpUI_filterMaxCheck "top" 0 
+						-af $clearButton "right" 0 
+				 
+						-ac shpUI_filterActiveCheck "left" 1 shpUI_filterLiveCheck 
+						-ac shpUI_filterMaxCheck "left" 1 shpUI_filterActiveCheck 
+						-ac shpUI_targetSearchField "left" 5 shpUI_filterMaxCheck 
+						-ac shpUI_targetSearchField "right" 0 $clearButton 
+						
+						$targetForm;
+		setParent ..;
+	
+		// target list
+		string $targetTreeForm = `formLayout`;
+			$value = `optionVar -q SHAPESTargetTreeSize`;
+			treeView	-nb 3 
+						-p $targetTreeForm 
+						-h $value 
+						-abr 0 
+						-adr 1 
+						-arp 1 
+						-dad shapesMain_storeNewTargetOrderFromCommand 
+						-ecc shapesMain_redefineParent 
+						-scc shapesMain_buildTargetSlider 
+						-irc shapesAction_renameCorrective 
+						shpUI_targetTree;
+			popupMenu shpUI_targetPopup;
+			
+			$value = `optionVar -q SHAPESShowUIDrivenSet`;
+			string $typeButton = `iconTextButton	-w 22 
+													-h 25 
+													-en $value 
+													-i "SHAPES_filterTypeAll.png" 
+													-ann "Sets if only blend shape targets or driven sets are displayed or a combination of both" 
+													shpUI_filterTypeButton`;
+			popupMenu -b 1;
+				radioMenuItemCollection;
+				menuItem -l "Shapes and Sets" -rb 1 -c "shapesUI_filterListByType 1 1" shpUI_listByTypeRadio1;
+				menuItem -l "Shapes" -rb 0 -c "shapesUI_filterListByType 2 1" shpUI_listByTypeRadio2;
+				menuItem -l "Sets" -rb 0 -c "shapesUI_filterListByType 3 1" shpUI_listByTypeRadio3;
+	
+			string $shrinkButton = `iconTextButton	-w 22 
+													-h 25 
+													-i "SHAPES_listRetract.png" 
+													-c "shapesUI_resizeScrollList 0 target" 
+													-ann "Shrink target list"`;
+			string $growButton = `iconTextButton	-w 22 
+													-h 25 
+													-i "SHAPES_listExpand.png" 
+													-c "shapesUI_resizeScrollList 1 target" 
+													-ann "Grow target list"`;
+	
+			formLayout	-e 
+						
+						-af shpUI_targetTree "top" 0 
+						-af shpUI_targetTree "left" 0 
+						-af shpUI_targetTree "bottom" 0 
+						-af $typeButton "top" 0 
+						-af $typeButton "right" 5 
+						-af $shrinkButton "right" 5 
+						-af $growButton "right" 5 
+				
+						-ac shpUI_targetTree "right" 3 $typeButton 
+						-ac $shrinkButton "top" 3 $typeButton 
+						-ac $growButton "top" 3 $shrinkButton 
+						
+						$targetTreeForm;
+	
+		setParent ..;
+	
+		// placeholder for adding the combo buttons when in combo edit mode
+		rowLayout -nc 9 -adj 7 -m 0 shpUI_comboButtonLayout;
+		setParent ..;
+		
+		//-------------------
+		// compare slider
+		//-------------------
+		
+		columnLayout -adj 1 -m 0 shpUI_compareSliderColumn;
+			shapesUI_buildSculptCompareSlider;
+		setParent ..;
+	
+	rowLayout -nc 13 -adj 3 shpUI_editButtonsLayout;
+		button -l "" -w 100 -bgc 0.365 0.365 0.365 shpUI_sculptButton;
+		popupMenu;
+			menuItem -l "Cancel Edit Mode" -en 0 shpUI_cancelItem;
+		button -l "Propagate" -w 70 shpUI_propagateButton;
+		shapesUI_createDefaultSculptButton;
+		separator -style "none" -w 13;
+		iconTextButton -w 25 -h 25 -i "SHAPESBrush_small.png" -ann "SHAPES Brush. Double-click for tool settings." -c "setToolTo SHAPESBrushContext1" -dcc "setToolTo SHAPESBrushContext1; toolPropertyWindow;";
+		separator -hr 0 -h 20 -w 12 -style "out";
+		iconTextButton -w 25 -h 25 -i "SHAPES_editAddTarget.png" -ann "Add or replace target shapes";
+		popupMenu -b 1;
+			menuItem -l "Add New Empty Target" -c "shapesAction_duplicateMeshFromMenu 1 1";
+			menuItem -d 1;
+			menuItem -l "Add Selection As New Default Target" -c "shapesAction_addSelectionAsTarget 0 0 0" shpUI_newDefaultMenuItem;
+			menuItem -l "Add Selection As New Posed Target" -c "shapesAction_addSelectionAsTarget 1 0 0" shpUI_newPosedMenuItem;
+			menuItem -l "Add Current Mesh As New Target" -c "shapesAction_duplicateMeshFromMenu 0 1";
+			menuItem -d 1;
+			menuItem -l "Replace Selected Target With Default Mesh" -c "shapesAction_addSelectionAsTarget 0 1 0";
+			menuItem -l "Replace Selected Target With Posed Mesh" -c "shapesAction_addSelectionAsTarget 1 1 0";
+			menuItem -d 1;
+			$valueInt = `optionVar -q SHAPESKeepSelectedMesh`;
+			menuItem -l "Keep Selected Mesh" -cb $valueInt -c ("optionVar -iv SHAPESKeepSelectedMesh #1");
+		iconTextButton -w 25 -h 25 -i "SHAPES_editAddHelper.png" -ann "Add extra channels";
+		popupMenu -b 1;
+			menuItem -l "Add Group" -c "shapesUI_addShapeHelperAttribute 1 shapeGroup";
+			menuItem -l "Add Shape Helper Attribute" -c "shapesUI_addShapeHelperAttribute 0 shapeHelper";
+		iconTextButton -w 25 -h 25 -i "SHAPES_editAction.png" -ann "Additional actions";
+		popupMenu -b 1;
+			menuItem -l "Create Attributes From Selection..." -c shapesUI_createAttributeOnNodeUI;
+			menuItem -l "Bake Current Mesh To Original..." -c shapesAction_currentMeshToOriginal;
+			menuItem -l "Batch Process Mirror" -sm 1 -en 0 shpUI_groupBatchProcessMenuItem;
+				menuItem -l "Symmetrize" -c "shapesMirror_batchMirrorTarget 0 0";
+				menuItem -l "Flip Mirror" -c "shapesMirror_batchMirrorTarget 0 1";
+				menuItem -d 1;
+				menuItem -l "Create Opposite" -c "shapesMirror_batchMirrorTarget 1 -1";
+				menuItem -l "Match Opposite" -c "shapesMirror_batchMirrorTarget 2 -1";
+			setParent -m ..;
+			menuItem -d 1;
+			menuItem -l "Duplicate Original Mesh" -c "shapesAction_duplicateMeshFromMenu 1 0";
+			menuItem -l "Duplicate Current Mesh" -c "shapesAction_duplicateMeshFromMenu 0 0";
+			menuItem -d 1;
+			menuItem -l "Create Progressive In-betweens..." -c shapesAction_createBlendShapeProgressiveInbetweens;
+		separator -hr 0 -h 20 -w 12 -style "out";
+		iconTextButton -w 25 -h 25 -i "SHAPES_editAddNode.png" -ann "Add or delete blend shape node";
+		popupMenu -b 1;
+			menuItem -l "Add Blend Shape Node Before Deformers" -c "shapesAction_addBlendShapeNode 1";
+			menuItem -l "Add Blend Shape Node After Current" -c "shapesAction_addBlendShapeNode 0";
+			if (`shapesGlobal_getMayaVersion` >= 2016.5)
+				menuItem -l "Add Blend Shape Node After Deformers" -c "shapesAction_addBlendShapeNode 2" -ver "2017";
+			menuItem -d 1;
+			menuItem -l "Delete Blend Shape Node" -c shapesAction_deleteBlendShapeNode;
+	setParent ..;
+	
+	setParent ..;
+	
+	//-------------------
+	// slider frame
+	//-------------------
+	
+	frameLayout -l "Channels" -li 3 -cll 1 -cl 1 -mw 5 -mh 5 shpUI_sliderFrame;
+	
+	setParent ..;
+	
+	//-------------------
+	// split shape frame
+	//-------------------
+	
+	frameLayout -l "Split Shape" -li 3 -cll 1 -cl 1 -mw 5 -mh 5 -m 0 shpUI_splitShapeFrame;
+	
+	setParent ..;
+	
+	//-------------------
+	// driven set frame
+	//-------------------
+	
+	$value = `optionVar -q SHAPESDrivenSetFolderCollabseState`;
+	int $manage = `optionVar -q SHAPESShowUIDrivenSet`;
+	frameLayout -l "Driven Set"
+				-li 3 
+				-cll 1 
+				-cl $value 
+				-mw 5 
+				-mh 5 
+				-m $manage 
+				-ec "optionVar -iv SHAPESDrivenSetFolderCollabseState (`frameLayout -q -cl shpUI_drivenSetFrame`)" 
+				-cc "optionVar -iv SHAPESDrivenSetFolderCollabseState (`frameLayout -q -cl shpUI_drivenSetFrame`)" 
+				shpUI_drivenSetFrame;
+	
+	shapesUI_showDrivenSetUI;
+	
+	//-------------------
+	// weights frame
+	//-------------------
+	
+	$value = `optionVar -q SHAPESWeightsFolderCollabseState`;
+	$manage = `optionVar -q SHAPESShowUIWeights`;
+	frameLayout -l "Shape Weights" 
+				-li 3 
+				-cll 1 
+				-cl $value 
+				-mw 5 
+				-mh 5 
+				-m $manage 
+				-ec "optionVar -iv SHAPESWeightsFolderCollabseState (`frameLayout -q -cl shpUI_weightsFrame`)" 
+				-cc "optionVar -iv SHAPESWeightsFolderCollabseState (`frameLayout -q -cl shpUI_weightsFrame`)" 
+				shpUI_weightsFrame;
+	shapesUI_showWeightsUI;
+	
+	//-------------------
+	// region frame
+	//-------------------
+	
+	$value = `optionVar -q SHAPESRegionFolderCollabseState`;
+	$manage = `optionVar -q SHAPESShowUIRegion`;
+	frameLayout -l "Region Map" 
+				-li 3 
+				-cll 1 
+				-cl $value 
+				-mw 5 
+				-mh 5 
+				-m $manage 
+				-ec "optionVar -iv SHAPESRegionFolderCollabseState (`frameLayout -q -cl shpUI_regionFrame`)" 
+				-cc "optionVar -iv SHAPESRegionFolderCollabseState (`frameLayout -q -cl shpUI_regionFrame`)" 
+				shpUI_regionFrame;
+	shapesUI_showRegionUI;
+	
+	//-------------------
+	// animation frame
+	//-------------------
+	
+	$value = `optionVar -q SHAPESAnimationFolderCollabseState`;
+	$manage = `optionVar -q SHAPESShowUIAnimation`;
+	frameLayout -l "Animation" 
+				-li 3 
+				-cll 1 
+				-cl $value 
+				-mw 5 
+				-mh 5 
+				-m $manage 
+				-ec "shapesUI_selectNode blendShape {} \"\" \"\"; optionVar -iv SHAPESAnimationFolderCollabseState (`frameLayout -q -cl shpUI_animationFrame`);" 
+				-cc "optionVar -iv SHAPESAnimationFolderCollabseState (`frameLayout -q -cl shpUI_animationFrame`)" 
+				shpUI_animationFrame;
+	shapesUI_showAnimationUI;
+	
+	//-------------------
+	// weight driver frame
+	//-------------------
+	
+	$value = `optionVar -q SHAPESShapeDriverCollabseState`;
+	$manage = `optionVar -q SHAPESShowUIDriver`;
+	frameLayout	-l "Shape Driver" 
+				-li 3 
+				-cll 1 
+				-cl $value 
+				-mw 5 
+				-mh 5 
+				-m $manage 
+				-ec "shapesUI_focusOnSelectedItem 1 shpUI_targetTree \"\"; optionVar -iv SHAPESShapeDriverCollabseState (`frameLayout -q -cl shpUI_driverFrame`);" 
+				-cc "optionVar -iv SHAPESShapeDriverCollabseState (`frameLayout -q -cl shpUI_driverFrame`)" 
+				shpUI_driverFrame;
+		
+		
+		string $driverOptionForm = `formLayout`;
+			string $label = `text -l "Driver Type" -al "left" -w 64`;
+			optionMenu -cc shapesUI_switchDriverUI shpUI_shapeDriverOption;
+				menuItem -l "None";
+				
+			formLayout	-e 
+						
+						-af $label "top" 2 
+						-af $label "left" 0 
+						-af shpUI_shapeDriverOption "top" 0 
+						-af shpUI_shapeDriverOption "right" 59 
+						
+						-ac shpUI_shapeDriverOption "left" 3 $label 
+						
+						$driverOptionForm;
+			
+			setParent ..;
+		
+			shapesUI_buildShapeDriverOptionMenu;
+	
+			// shape driver
+			string $driverForm = `formLayout`;
+				$value = `optionVar -q SHAPESSortJointList`;
+				checkBox -l "Sort" -w 64 -v $value -cc "optionVar -iv SHAPESSortJointList #1; shapesMain_listSkinClusterJoints" -ann "Sort the driver list in alphabetical order" shpUI_alphaCheck;
+				textFieldGrp -l "" -ann "Enter search string. Use + for combinations." -cw2 0 155 -ct2 "left" "right" -co2 0 0 -ad2 2 shpUI_driverSearchField;
+				string $clearButtonDriver = `iconTextButton -w 26 -h 25 -i "SHAPES_clear.png" -ann "Clear search" -c "shapesUI_clearSearch driver 0"`;
+	
+				// change the text change command based on the maya version
+				if (`shapesGlobal_getMayaVersion` < 2014)
+					textFieldGrp -e -cc "shapesUI_searchJointString driver" shpUI_driverSearchField;
+				else
+					textFieldGrp -e -tcc "shapesUI_searchJointString driver" shpUI_driverSearchField;
+	
+				formLayout	-e 
+							
+							-af shpUI_alphaCheck "top" 0 
+							-af shpUI_alphaCheck "bottom" 0 
+							-af shpUI_alphaCheck "left" 1 
+							-af $clearButtonDriver "right" 0 
+							
+							-ac shpUI_driverSearchField "left" 0 shpUI_alphaCheck 
+							-ac shpUI_driverSearchField "right" 0 $clearButtonDriver 
+							
+							$driverForm;
+			setParent ..;
+	
+			// driver list
+			string $driverTreeForm = `formLayout`;
+				$value = `optionVar -q SHAPESDriverTreeSize`;
+				treeView	-nb 1 
+							-p $driverTreeForm 
+							-h $value 
+							-abr 0 
+							-adr 1 
+							-arp 1 
+							-dad shapesMain_driverListDragHandle 
+							-ecc shapesMain_storeDriverList 
+							-scc "shapesDriver_collectJointInfo" 
+							-idc "shapesUI_selectNode driver {} \"\"" 
+							shpUI_driverTree;
+				popupMenu;
+					menuItem -l "Select From Scene" -c shapesUI_selectFromScene;
+					menuItem -d 1;
+					menuItem -l "Add From Scene" -c "shapesMain_storeCustomDriver \"\" 0";
+					menuItem -l "Remove From List" -c "shapesMain_removeCustomDriver";
+					menuItem -d 1;
+					menuItem -l "Deselect" -c "shapesUI_clearListSelection shpUI_driverTree driver";
+					menuItem -d 1;
+					menuItem -l "Rename Group" -c shapesMain_renameDriverGroup;
+				
+				string $groupButton = `iconTextButton -w 22 -h 25 -i "SHAPES_editAddHelper.png" -c "shapesMain_storeCustomDriver \"\" 1" -ann "Add Group"`;
+				string $shrinkButtonDriver = `iconTextButton -w 22 -h 25 -i "SHAPES_listRetract.png" -c "shapesUI_resizeScrollList 0 joint" -ann "Shrink target list"`;
+				string $growButtonDriver = `iconTextButton -w 22 -h 25 -i "SHAPES_listExpand.png" -c "shapesUI_resizeScrollList 1 joint" -ann "Grow target list"`;
+				
+				formLayout	-e 
+							
+							-af shpUI_driverTree "top" 0 
+							-af shpUI_driverTree "left" 0 
+							-af shpUI_driverTree "bottom" 0 
+							-af $groupButton "top" 0 
+							-af $groupButton "right" 5 
+							-af $shrinkButtonDriver "right" 5 
+							-af $growButtonDriver "right" 5 
+							
+							-ac shpUI_driverTree "right" 3 $groupButton 
+							-ac $shrinkButtonDriver "top" 3 $groupButton 
+							-ac $growButtonDriver "top" 3 $shrinkButtonDriver 
+							
+							$driverTreeForm;
+			
+			setParent ..;
+			
+			columnLayout -adj 1 shpUI_driverSettingsColumn;
+		
+		setParent ..;
+	
+	setParent ..;
+	
+	//-------------------
+	// attach the window
+	//-------------------
+	
+	string $floatFlag = "-fl " + $dockFloat;
+	if (`shapesGlobal_getMayaVersion` >= 2016)
+		$floatFlag = "";
+	string $dockCmd = "dockControl -w 370 -aa all -a " + $dockArea + " " + $floatFlag + " -l \"SHAPES " + $gShapes_versionShort + $gShapes_versionStudent + "\" -con SHAPESDockWin SHAPESDock";
+	eval $dockCmd;
+	
+	string $floatCmd = "{optionVar -sv SHAPESCurrentDockPosition (`dockControl -q -area SHAPESDock`); optionVar -iv SHAPESCurrentDockFloat (`dockControl -q -fl SHAPESDock`);}";
+	dockControl -e -r -fcc $floatCmd SHAPESDock;
+	
+	shapesMain_refreshBlendShapeMenu {"None"};
+	shapesUI_switchDriverUI;
+	// set the sculpt button label based on the sculpting preference
+	shapesUI_toggleSculptButtonLabel;
+}
+
+
+global proc shapesUI_removeUI()
+{
+	if (`dockControl -ex SHAPESDock`)
+		deleteUI SHAPESDock;
+	else if (`window -ex SHAPESDockWin`)
+		deleteUI SHAPESDockWin;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// additional ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_openHelp()
+{
+	//
+	// open the user guide
+	//
+	string $sep = ":";
+	if (`about -os` == "win64")
+		$sep = ";";
+	
+	string $paths[] = stringToStringArray((`getenv MAYA_MODULE_PATH`), $sep);
+	string $modulePath;
+	for ($p in $paths)
+	{
+		if ($modulePath == "" && `filetest -d $p`)
+		{
+			string $files[] = `getFileList -fld $p`;
+			for ($f in $files)
+			{
+				if (`gmatch $f "SHAPES.mod"`)
+				{
+					int $fileID = `fopen ($p + "/" + $f) "r"`;
+					string $fileLine = `fgetline $fileID`;
+					fclose $fileID;
+					string $lines[] = stringToStringArray($fileLine, "\n");
+					if (size($lines) == 0)
+						return;
+					string $items[] = stringToStringArray($lines[0], " ");
+					stringArrayRemoveAtIndex(0, $items); // delete "+"
+					stringArrayRemoveAtIndex(0, $items); // delete "SHAPES"
+					stringArrayRemoveAtIndex(0, $items); // delete "1.0"
+					$modulePath = stringArrayToString($items, "");
+					$modulePath += "/help/SHAPES_UserGuide.pdf";
+				}
+			}
+		}
+	}
+	if ($modulePath != "")
+	{
+		string $platform = `python("import sys; sys.platform")`;
+		if ($platform == "darwin")
+			python("import os; os.system(\"open '" + $modulePath + "'\")");
+		else if ($platform == "linux2")
+			python("import subprocess; subprocess.call(['xdg-open', '" + $modulePath + "'])");
+		else
+			system($modulePath);
+	}
+}
+
+
+global proc shapesUI_openAbout()
+{
+	//
+	// open the about window
+	//
+	global string $gShapes_creator;
+	global string $gShapes_copyright;
+	global string $gShapes_version;
+	global string $gShapes_versionStudent;
+	
+	if (`window -ex SHAPESAboutWin`)
+		deleteUI SHAPESAboutWin;
+	
+	if (`windowPref -ex SHAPESAboutWin`)
+		windowPref -r SHAPESAboutWin;
+	
+	window -t "About SHAPES" -w 200 -h 265 SHAPESAboutWin;
+	
+	string $items[] = stringToStringArray($gShapes_version, " ");
+	string $lineBreak = "";
+	if ($gShapes_versionStudent != "")
+		$lineBreak = "\n";
+	$items[size($items) - 2] = $items[size($items) - 2] + $gShapes_versionStudent + $lineBreak;
+	string $versionString = stringArrayToString($items, " ");
+	
+	columnLayout -adj 1;
+	separator -style "none" -h 15;
+	rowColumnLayout -nc 2;
+	separator -style "none" -w 84;
+	image -i "SHAPES.png";
+	setParent ..;
+	separator -style "none" -h 15;
+	text -l "SHAPES" -fn "boldLabelFont";
+	separator -style "none" -h 5;
+	text -l "Blend Shape Editor";
+	separator -style "none" -h 15;
+	text -l $versionString;
+	separator -style "none" -h 15;
+	text -l "Plug-Ins:";
+	text -l ("SHAPESTools  " + (`pluginInfo -q -v SHAPESTools`));
+	text -l ("SHAPESBrush  " + (`pluginInfo -q -v SHAPESBrush`));
+	text -l ("rampWeights  " + (`pluginInfo -q -v rampWeights`));
+	text -l ("weightDriver  " + (`pluginInfo -q -v weightDriver`));
+	separator -style "none" -h 15;
+	text -l ("Creator: " + $gShapes_creator);
+	separator -style "none" -h 5;
+	text -l ("© " + $gShapes_copyright);
+	setParent ..;
+	
+	showWindow SHAPESAboutWin;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// ui preferences UI
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildPreferencesUI()
+{
+	//
+	// opens the window for setting which parts of the ui should be displayed
+	//
+	
+	// get the external sculpt app info
+	// retrieve the information before building the window because menu commands are used
+	// and these can interfere with building the window, setting the wrong ui parent
+	int $sculptApp[] = shapesGlobal_getSculptApp();
+	
+	if (`window -ex SHAPESPrefsWin`)
+		deleteUI SHAPESPrefsWin;
+	
+	window -t "Preferences" -w 448 -h 668 -mb 1 SHAPESPrefsWin;
+	
+	menu -l "Edit";
+		menuItem -l "Reset Preferences..." -c shapesGlobal_resetEnvDefaults;
+	
+	int $colWidth1 = 10;
+	int $colWidth2 = 5;
+	float $value;
+	string $ann;
+	
+	string $form = `formLayout`;
+		string $tabs = `tabLayout`;
+		if (`shapesGlobal_getMayaVersion` >= 2016)
+			tabLayout -e -bs "none" $tabs;
+		tabLayout -e -cc ("optionVar -iv SHAPESPreferencesSelectedTab (`tabLayout -q -sti " + $tabs + "`)") $tabs;
+		setParent ..;
+		string $closeBtn = `button -l "Close" -c "deleteUI SHAPESPrefsWin"`;
+	setParent ..;
+	
+	formLayout 	-e
+				
+				-af $tabs "top" 5 
+				-af $tabs "left" 5 
+				-af $tabs "right" 5 
+				-af $closeBtn "left" 5 
+				-af $closeBtn "right" 5 
+				-af $closeBtn "bottom" 5 
+				
+				-ac $tabs "bottom" 10 $closeBtn 
+				
+				$form;
+	
+	setParent $tabs;
+	
+	string $featureFrame = `columnLayout -adj 1`;
+		frameLayout -l "Visible" -cll 0 -cl 0 -mw 5 -mh 5;
+			columnLayout -cal "left";
+				rowLayout -nc 4 -cat 1 "right" $colWidth1;
+					checkBox -l "" -v (`optionVar -q SHAPESShowUIDrivenSet`) -cc "optionVar -iv SHAPESShowUIDrivenSet #1; shapesUI_manageUIElements" shpUI_uiPrefsDrivenSetCheck;
+					text -l "Driven Set" -w 160 -al "left";
+					separator -st "none" -w 10;
+					button -l "?" -h 15 -c ("shapesUI_displayFeatureHelp drivenSet");
+				setParent ..;
+				separator -style "none" -h 5;
+			
+				rowLayout -nc 4 -cat 1 "right" $colWidth1;
+					checkBox -l "" -v (`optionVar -q SHAPESShowUIWeights`) -cc "optionVar -iv SHAPESShowUIWeights #1; shapesUI_manageUIElements" shpUI_uiPrefsWeightsCheck;
+					text -l "Shape Weights" -w 160 -al "left";
+					separator -st "none" -w 10;
+					button -l "?" -h 15 -c ("shapesUI_displayFeatureHelp weights");
+				setParent ..;
+				separator -style "none" -h 5;
+			
+				rowLayout -nc 4 -cat 1 "right" $colWidth1;
+					checkBox -l "" -v (`optionVar -q SHAPESShowUIRegion`) -cc "optionVar -iv SHAPESShowUIRegion #1; shapesUI_manageUIElements" shpUI_uiPrefsRegionCheck;
+					text -l "Region Map" -w 160 -al "left";
+					separator -st "none" -w 10;
+					button -l "?" -h 15 -c ("shapesUI_displayFeatureHelp regions");
+				setParent ..;
+				separator -style "none" -h 5;
+			
+				rowLayout -nc 4 -cat 1 "right" $colWidth1;
+					checkBox -l "" -v (`optionVar -q SHAPESShowUIAnimation`) -cc "optionVar -iv SHAPESShowUIAnimation #1; shapesUI_manageUIElements" shpUI_uiPrefsAnimationCheck;
+					text -l "Animation" -w 160 -al "left";
+					separator -st "none" -w 10;
+					button -l "?" -h 15 -c ("shapesUI_displayFeatureHelp animation");
+				setParent ..;
+				separator -style "none" -h 5;
+			
+				rowLayout -nc 4 -cat 1 "right" $colWidth1;
+					checkBox -l "" -v (`optionVar -q SHAPESShowUIDriver`) -cc "optionVar -iv SHAPESShowUIDriver #1; shapesUI_manageUIElements" shpUI_uiPrefsDriverCheck;
+					text -l "Shape Driver and Combos" -w 160 -al "left";
+					separator -st "none" -w 10;
+					button -l "?" -h 15 -c ("shapesUI_displayFeatureHelp driver");
+				setParent ..;
+				separator -style "none" -h 5;
+			
+				rowLayout -nc 4 -cat 1 "right" $colWidth1;
+					checkBox -l "" -v (`optionVar -q SHAPESShowUIWeightDriver`) -cc "optionVar -iv SHAPESShowUIWeightDriver #1; shapesUI_manageUIElements" shpUI_uiPrefsWeightDriverCheck;
+					text -l "Weight Driver" -w 160 -al "left";
+					separator -st "none" -w 10;
+					button -l "?" -h 15 -c ("shapesUI_displayFeatureHelp weightDriver");
+				setParent ..;
+				separator -style "none" -h 5;
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Info" -cll 0 -cl 0 -mw 5 -mh 5 shapesUI_helpInfoHeader;
+			columnLayout;
+				text -l "Select an info button to display information about the feature." -al "left" shpUI_helpInfoText;
+			setParent ..;
+		setParent ..;
+		
+	setParent ..;
+	
+	string $sculptFrame = `columnLayout -adj 1`;
+		frameLayout -l "Edit Mode" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESAutoEnableSculpt`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESAutoEnableSculpt #1") -ann (uiRes("m_SHAPES_ui.kAutoEnableSculpt"));
+				text -l "Auto Enable Brush" -al "left" -ann (uiRes("m_SHAPES_ui.kAutoEnableSculpt"));
+				
+				if (`shapesGlobal_getMayaVersion` >= 2016)
+				{
+					$value = `optionVar -q SHAPESUseMayaSculptTool`;
+					checkBox -l "" -v $value -cc ("optionVar -iv SHAPESUseMayaSculptTool #1") -ann (uiRes("m_SHAPES_ui.kUseMayaSculptTool"));
+					text -l "Use Maya Sculpt Tool" -al "left" -ann (uiRes("m_SHAPES_ui.kUseMayaSculptTool"));
+					
+					separator -st "none";
+					$value = `optionVar -q SHAPESMayaSculptTool`;
+					optionMenu -l "" -cc shapesUI_switchDefaultSculptTool -ann (uiRes("m_SHAPES_ui.kMayaSculptTool")) shpUI_defaultSculptToolOption;
+						menuItem -l "Sculpt Tool";
+						menuItem -l "Smooth Tool";
+						menuItem -l "Relax Tool";
+						menuItem -l "Grab Tool";
+						menuItem -l "Pinch Tool";
+						menuItem -l "Flatten Tool";
+						menuItem -l "Foamy Tool";
+						menuItem -l "Spray Tool";
+						menuItem -l "Repeat Tool";
+						menuItem -l "Imprint Tool";
+						menuItem -l "Wax Tool";
+						menuItem -l "Scrape Tool";
+						menuItem -l "Fill Tool";
+						menuItem -l "Knife Tool";
+						menuItem -l "Smear Tool";
+						menuItem -l "Bulge Tool";
+						menuItem -l "Amplify Tool";
+						menuItem -l "Freeze Tool";
+					optionMenu -e -sl $value shpUI_defaultSculptToolOption;
+				}
+				
+				$value = `optionVar -q SHAPESEnableHUD`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESEnableHUD #1") -ann (uiRes("m_SHAPES_ui.kEnableHUD"));
+				text -l "Show HUD Buttons" -al "left" -ann (uiRes("m_SHAPES_ui.kEnableHUD"));
+				
+				$value = `optionVar -q SHAPESShowSculptFrame`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESShowSculptFrame #1") -ann (uiRes("m_SHAPES_ui.kShowSculptFrame"));
+				text -l "Show Frame" -al "left" -ann (uiRes("m_SHAPES_ui.kShowSculptFrame"));
+				
+				$value = `optionVar -q SHAPESUseDefaultMaterial`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESUseDefaultMaterial #1") -ann (uiRes("m_SHAPES_ui.kUseDefaultMaterial"));
+				text -l "Use Default Material" -al "left" -ann (uiRes("m_SHAPES_ui.kUseDefaultMaterial"));
+				
+				$value = `optionVar -q SHAPESSculptIsolation`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESSculptIsolation #1") -ann (uiRes("m_SHAPES_ui.kSculptIsolation"));
+				text -l "Isolated Sculpt Mode" -al "left" -ann (uiRes("m_SHAPES_ui.kSculptIsolation"));
+				
+				$value = `optionVar -q SHAPESIgnoreBrushHistoryWarning`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESIgnoreBrushHistoryWarning #1") -ann (uiRes("m_SHAPES_ui.kIgnoreBrushHistoryWarning"));
+				text -l "Ignore Freeze Brush History Warning" -al "left" -ann (uiRes("m_SHAPES_ui.kIgnoreBrushHistoryWarning"));
+			setParent ..;
+			
+			rowColumnLayout -nc 6 -cw 1 135;
+				text -l "Brush Hotkey" -al "left";
+				button -l "Set" -w 60 -c "shapesUI_setupHotkeyUI brush";
+				separator -st "none" -w 10;
+				button -l "Remove" -w 60 -c "shapesUI_deleteHotkey brush";
+				separator -st "none" -w 15;
+				text -l "Current: None" shpUI_currentBrushHotkeyLabel;
+				shapesUI_updateHotkeyInfo "brush";
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Sculpt Compare" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESEnableSculptCompare`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESEnableSculptCompare #1") -ann (uiRes("m_SHAPES_ui.kEnableSculptCompare"));
+				text -l "Enable Sculpt Compare (Ignored by Shot Fix)" -al "left" -ann (uiRes("m_SHAPES_ui.kEnableSculptCompare"));
+				
+				$value = `optionVar -q SHAPESSculptCompareLinearKeys`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESSculptCompareLinearKeys #1") -ann (uiRes("m_SHAPES_ui.kSculptCompareLinearKeys"));
+				text -l "Sculpt Compare With Linear Keys (Ignored When Tweaking In-betweens)" -al "left" -ann (uiRes("m_SHAPES_ui.kSculptCompareLinearKeys"));
+				
+				$value = `optionVar -q SHAPESJumpToEditPose`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESJumpToEditPose #1") -ann (uiRes("m_SHAPES_ui.kJumpToEditPose"));
+				text -l "Jump To Edit Pose" -al "left" -ann (uiRes("m_SHAPES_ui.kJumpToEditPose"));
+			setParent ..;
+			
+			separator -st "in";
+			
+			rowLayout;
+				$value = `optionVar -q SHAPESCompareDraggerToolStep`;
+				floatSliderButtonGrp	-l "Compare Tool Step Size" 
+										-bl "Default"
+										-f 1 
+										-v $value 
+										-min 0 
+										-max 1 
+										-pre 3 
+										-cw4 130 50 230 30 
+										-co4 0 0 5 0 
+										-ct4 "left" "right" "both" "left" 
+										-cc "optionVar -fv SHAPESCompareDraggerToolStep (`floatSliderGrp -q -v shpUI_sculptCompareStepSlider`)" 
+										-dc "optionVar -fv SHAPESCompareDraggerToolStep (`floatSliderGrp -q -v shpUI_sculptCompareStepSlider`)" 
+										-bc "optionVar -fv SHAPESCompareDraggerToolStep 0.1; floatSliderGrp -e -v 0.1 shpUI_sculptCompareStepSlider;" 
+										shpUI_sculptCompareStepSlider;
+			setParent ..;
+			
+			separator -st "in";
+			
+			rowColumnLayout -nc 6 -cw 1 135;
+				text -l "Compare Tool Hotkey" -al "left";
+				button -l "Set" -w 60 -c "shapesUI_setupHotkeyUI compare";
+				separator -st "none" -w 10;
+				button -l "Remove" -w 60 -c "shapesUI_deleteHotkey compare";
+				separator -st "none" -w 15;
+				text -l "Current: None" shpUI_currentCompareHotkeyLabel;
+				shapesUI_updateHotkeyInfo "compare";
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Options" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESTweakAutoMirrorOption`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESTweakAutoMirrorOption #1") -ann (uiRes("m_SHAPES_ui.kTweakAutoMirrorOption"));
+				text -l "Tweak Auto Mirror" -al "left" -ann (uiRes("m_SHAPES_ui.kTweakAutoMirrorOption"));
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Application" -cll 0 -cl 0 -mw 5 -mh 5;
+			
+			columnLayout;
+				radioCollection shpUI_exportRadioCollection;
+					radioButton -l "Sculpt In Maya" -cc ("optionVar -iv SHAPESExportMode 0; shapesUI_toggleSculptButtonLabel;") shpUI_exportRadio0;
+					radioButton -l "Sculpt In Mudbox" -en $sculptApp[0] -cc ("optionVar -iv SHAPESExportMode 1; shapesUI_toggleSculptButtonLabel;") shpUI_exportRadio1;
+					radioButton -l "Sculpt In ZBrush" -en $sculptApp[1] -cc ("optionVar -iv SHAPESExportMode 2; shapesUI_toggleSculptButtonLabel;") shpUI_exportRadio2;
+					radioButton -l "Export As FBX" -cc ("optionVar -iv SHAPESExportMode 3; shapesUI_toggleSculptButtonLabel;") shpUI_exportRadio3;
+					radioButton -l "Custom Export" -cc ("optionVar -iv SHAPESExportMode 4; shapesUI_toggleSculptButtonLabel;") shpUI_exportRadio4;
+				
+				int $radioValue = `optionVar -q SHAPESExportMode`;
+				string $radioString = "shpUI_exportRadio" + $radioValue;
+				radioCollection -e -sl $radioString shpUI_exportRadioCollection;
+			setParent ..;
+			
+			separator -st "in";
+				
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESAutoApplyCorrectiveShape`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESAutoApplyCorrectiveShape #1") -ann (uiRes("m_SHAPES_ui.kAutoApplyCorrectiveShape"));
+				text -l "Auto Apply Shape (Mudbox/ZBrush)" -al "left" -ann (uiRes("m_SHAPES_ui.kAutoApplyCorrectiveShape"));
+			setParent ..;
+		setParent ..;
+	
+	setParent ..;
+	
+	string $mirrorFrame = `columnLayout -adj 1`;
+		frameLayout -l "Mirror Type" -cll 0 -cl 0 -mw 5 -mh 5;
+			string $coll = `radioCollection shpUI_mirrorTypeRadioCollection`;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				radioButton -l "" -cl $coll -cc ("shapesMirror_defineSymmetryCenter 0 0") -ann (uiRes("m_SHAPES_ui.kPositionBasedMirror")) shpUI_positionBasedMirrorRadio;
+				text -l "Position Based Mirror" -al "left" -ann (uiRes("m_SHAPES_ui.kPositionBasedMirror"));
+			setParent ..;
+			
+			rowLayout;
+				$value = `optionVar -q SHAPESMirrorToleranceValue`;
+				floatSliderButtonGrp	-l "Mirror Tolerance" 
+										-bl "Default"
+										-f 1 
+										-v $value 
+										-min 0 
+										-max 1 
+										-pre 4 
+										-cw4 130 50 230 30 
+										-co4 0 0 5 0 
+										-ct4 "left" "right" "both" "left" 
+										-cc "optionVar -fv SHAPESMirrorToleranceValue (`floatSliderGrp -q -v shpUI_mirrorToleranceSlider`)" 
+										-dc "optionVar -fv SHAPESMirrorToleranceValue (`floatSliderGrp -q -v shpUI_mirrorToleranceSlider`)" 
+										-bc "optionVar -fv SHAPESMirrorToleranceValue 0.01; floatSliderGrp -e -v 0.01 shpUI_mirrorToleranceSlider;" 
+										shpUI_mirrorToleranceSlider;
+			setParent ..;
+			
+			separator -st "in";
+			
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				radioButton -l "" -cl $coll -ann (uiRes("m_SHAPES_ui.kOrderBasedMirror")) shpUI_orderBasedMirrorRadio;
+				text -l "Order Based Mirror (requires the mesh to be one shell)" -al "left" -ann (uiRes("m_SHAPES_ui.kOrderBasedMirror"));
+			setParent ..;
+			
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5 -m 0 shpUI_orderBasedMirrorInfoRow;
+				separator -st "none" -w 13;
+				text -l "" -fn "obliqueLabelFont" shpUI_orderBasedMirrorInfo;
+			setParent ..;
+			
+			rowColumnLayout -nc 4 -cw 1 135 shpUI_symmetryEdgeLayout;
+				text -l "Symmetry Center" -al "left";
+				button -l "Set Edge" -w 60 -c "shapesMirror_defineSymmetryCenter 1 0" -ann "Select an edge at the line of symmetry and press 'Set Edge'";
+				separator -st "none" -w 10;
+				button -w 100 -ann "Select the edge at the line of symmetry used for mirroring" shpUI_symmetryEdgeButton;
+			setParent ..;
+		setParent ..;
+		
+		shapesUI_setSymmetryEdgeButtonDefault;
+		shapesUI_setOrderBasedMirror `optionVar -q SHAPESOrderBasedMirror`;
+		
+		frameLayout -l "Options" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESBehaviorMirror`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESBehaviorMirror #1") -ann (uiRes("m_SHAPES_ui.kBehaviorMirror"));
+				text -l "Drivers Mirror With Behavior" -al "left" -ann (uiRes("m_SHAPES_ui.kBehaviorMirror"));
+			setParent ..;
+				
+			separator -st "in";
+			
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESFullMirror`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESFullMirror #1") -ann (uiRes("m_SHAPES_ui.kFullMirror"));
+				text -l "Full Mirror (across line of symmetry)" -al "left" -ann (uiRes("m_SHAPES_ui.kFullMirror"));
+				
+				$value = `optionVar -q SHAPESMirrorDirection`;
+				checkBox -l "" -v $value -cc ("shapesUI_toggleMirrorItemLabel #1") -ann (uiRes("m_SHAPES_ui.kMirrorDirection"));
+				text -l "" -al "left" -ann (uiRes("m_SHAPES_ui.kMirrorDirection")) shpUI_mirrorDirectionLabel;
+				shapesUI_toggleMirrorItemLabel $value;
+			setParent ..;
+			
+			rowLayout;
+				radioButtonGrp -l "Axis" -nrb 3 -la3 "X" "Y" "Z" -cw4 40 50 50 50 -cl4 "left" "left" "left" "left" -cc ("optionVar -iv SHAPESMirrorAxis (`radioButtonGrp -q -sl shpUI_mirrorAxisRadio`)") shpUI_mirrorAxisRadio;
+				$radioValue = `optionVar -q SHAPESMirrorAxis`;
+				// make sure the setting is a 1-based value
+				// due to the changes to the preferences in version 3.0_b020
+				if ($radioValue == 0)
+					$radioValue = 1;
+				radioButtonGrp -e -sl $radioValue shpUI_mirrorAxisRadio;
+			setParent ..;
+		setParent ..;
+			
+		frameLayout -l "Side Identifier" -cll 0 -cl 0 -mw 5 -mh 5;
+			columnLayout -adj 1;
+				textFieldGrp -l "Left" -ad2 2 -cw2 40 100 -cl2 "left" "left" -ct2 "left" "both" -co2 5 0 -cc shapesUI_setIdentifierPrefs shpUI_mirrorIdentFieldL;
+				textFieldGrp -l "Right" -ad2 2 -cw2 40 100 -cl2 "left" "left" -ct2 "left" "both" -co2 5 0 -cc shapesUI_setIdentifierPrefs shpUI_mirrorIdentFieldR;
+			setParent ..;
+			rowColumnLayout -nc 1;
+				button -l "Default" -w 60 -h 25 -c shapesUI_resetIdentifierPrefs;
+			setParent ..;
+			shapesUI_listUserIdentifier;
+		setParent ..;
+	setParent ..;
+	
+	string $globalFrame = `columnLayout -adj 1`;
+		frameLayout -l "General" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESHidePaintWeightsToolSettings`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESHidePaintWeightsToolSettings #1;") -ann (uiRes("m_SHAPES_ui.kHidePaintWeightsToolSettings"));
+				text -l "Hide Paint Weights Tool Settings" -al "left" -ann (uiRes("m_SHAPES_ui.kHidePaintWeightsToolSettings"));
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Mesh Selection" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESAutoListJoints`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESAutoListJoints #1") -ann (uiRes("m_SHAPES_ui.kAutoListJoints"));
+				text -l "Auto List Joints On Load" -al "left" -ann (uiRes("m_SHAPES_ui.kAutoListJoints"));
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Target List" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESConfirmDeleteTarget`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESConfirmDeleteTarget #1") -ann (uiRes("m_SHAPES_ui.kConfirmDeleteTarget"));
+				text -l "Confirm Delete" -al "left" -ann (uiRes("m_SHAPES_ui.kConfirmDeleteTarget"));
+			setParent ..;
+		setParent ..;
+		
+		
+		frameLayout -l "Shape Driver" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESAutoAddShapeDriver`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESAutoAddShapeDriver #1") -ann (uiRes("m_SHAPES_ui.kAutoAddShapeDriver"));
+				text -l "Auto Add Shape Driver" -al "left" -ann (uiRes("m_SHAPES_ui.kAutoAddShapeDriver"));
+				
+				$value = `optionVar -q SHAPESIgnoreZeroChannels`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESIgnoreZeroChannels #1") -ann (uiRes("m_SHAPES_ui.kIgnoreZeroChannels"));
+				text -l "Ignore Zero Attributes" -al "left" -ann (uiRes("m_SHAPES_ui.kIgnoreZeroChannels"));
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Driven Set" -cll 0 -cl 0 -mw 5 -mh 5;
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value =`optionVar -q SHAPESHideSetMemberRenameMessage`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESHideSetMemberRenameMessage #1") -ann (uiRes("m_SHAPES_ui.kHideSetMemberRenameMessage"));
+				text -l "Hide Set Member Rename Message" -al "left" -ann (uiRes("m_SHAPES_ui.kHideSetMemberRenameMessage"));
+				
+				$value = `optionVar -q SHAPESLockNonDrivenSetAttributes`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESLockNonDrivenSetAttributes #1") -ann (uiRes("m_SHAPES_ui.kLockNonDrivenSetAttributes"));
+				text -l "Lock Non Driven Set Attributes" -al "left" -ann (uiRes("m_SHAPES_ui.kLockNonDrivenSetAttributes"));
+			setParent ..;
+		setParent ..;
+		
+		frameLayout -l "Region Map" -cll 0 -cl 0 -mw 5 -mh 5;
+			columnLayout -adj 1;
+				textFieldGrp -l "Label" -ad2 2 -cw2 40 100 -cl2 "left" "left" -ct2 "left" "both" -co2 5 0 -cc shapesUI_setRegionLabelsPrefs shpUI_regionLabelsField;
+			setParent ..;
+			rowColumnLayout -nc 1;
+				button -l "Default" -w 60 -h 25 -c shapesUI_resetRegionLabelPrefs;
+			setParent ..;
+			shapesUI_listUserRegionLabels;
+			
+			separator -st "in";
+			
+			rowColumnLayout -nc 2 -co 1 "right" $colWidth2 -rs 1 5;
+				$value = `optionVar -q SHAPESDistributePartialRegionWeights`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESDistributePartialRegionWeights #1") -ann (uiRes("m_SHAPES_ui.kDistributePartial"));
+				text -l "Distribute Free Weights" -al "left" -ann (uiRes("m_SHAPES_ui.kDistributePartial"));
+				$value = `optionVar -q SHAPESColorDisplayPartialWeights`;
+				checkBox -l "" -v $value -cc ("optionVar -iv SHAPESColorDisplayPartialWeights #1; iconTextButton -e -i (\"SHAPES_regionPartials\" + #1 + \".png\") shpUI_regionShowPartials;") -ann (uiRes("m_SHAPES_ui.kColorDisplayPartialWeights"));
+				text -l "Partial Weights Use Color Ramp" -al "left" -ann (uiRes("m_SHAPES_ui.kColorDisplayPartialWeights"));
+			setParent ..;
+			
+		setParent ..;
+	setParent ..;
+	
+	setParent ..; // end tab layout
+	
+	tabLayout -e -tl $featureFrame "UI Elements" -tl $sculptFrame "Sculpt" -tl $mirrorFrame "Mirror" -tl $globalFrame "Global" $tabs;
+	$value = `optionVar -q SHAPESPreferencesSelectedTab`;
+	tabLayout -e -sti $value $tabs;
+	
+	showWindow SHAPESPrefsWin;
+}
+
+
+global proc shapesUI_displayFeatureHelp( string $type )
+{
+	//
+	// display the help explanation about the feature
+	//
+	string $drivenSetTitle = "Driven Set";
+	string $drivenSet = "Allows the creation and editing of driven key sets working independently or in\nconjunction with blend shape targets.\nDriven Sets are either joint or transform node based and can be controlled\nlike any other blend shape target.";
+	string $weightsTitle = "Shape Weights";
+	string $weights = "Allows the creation and editing of blend shape target weight maps to limit the\ninfluence of target shapes. Weight maps can be exported to, and imported\nfrom freeze regions when using the SHAPES brush.";
+	string $regionsTitle = "Region Map";
+	string $regions = "Extract and update multiple blend shape targets from a complex single shape\nbased on a single color map.";
+	string $animationTitle = "Animation";
+	string $animation = "Enables basic key framing functionality during the corrective animation process.";
+	string $driverTitle = "Shape Driver And Combos";
+	string $driver = "Adds various functions helping to set up driving relationships for blend shape\ntargets. Drivers can be standard set driven keyframe or the SHAPES weight\ndriver node (if enabled). Combos allow for driving target shapes based on a\ncombination of other targets.";
+	string $weightDriverTitle = "Weight Driver";
+	string $weightDriver = "Enables the SHAPES weight driver node as an alternative shape driver in\naddition to set driven keyframes. The weight driver node is a free plugin\nwhich is part of SHAPES but also available separately. Scenes using the\nweight driver node need to have the plug-in installed on the target computer.";
+	
+	string $title;
+	string $help;
+	if ($type == "drivenSet")
+	{
+		$title = $drivenSetTitle;
+		$help = $drivenSet;
+	}
+	if ($type == "weights")
+	{
+		$title = $weightsTitle;
+		$help = $weights;
+	}
+	if ($type == "regions")
+	{
+		$title = $regionsTitle;
+		$help = $regions;
+	}
+	if ($type == "animation")
+	{
+		$title = $animationTitle;
+		$help = $animation;
+	}
+	if ($type == "driver")
+	{
+		$title = $driverTitle;
+		$help = $driver;
+	}
+	if ($type == "weightDriver")
+	{
+		$title = $weightDriverTitle;
+		$help = $weightDriver;
+	}
+	
+	frameLayout -e -l $title shapesUI_helpInfoHeader;
+	text -e -l $help shpUI_helpInfoText;
+}
+
+
+global proc shapesUI_manageUIElements()
+{
+	//
+	// set the ui elements to display
+	//
+	frameLayout -e -m (`optionVar -q SHAPESShowUIDrivenSet`) shpUI_drivenSetFrame;
+	frameLayout -e -m (`optionVar -q SHAPESShowUIWeights`) shpUI_weightsFrame;
+	frameLayout -e -m (`optionVar -q SHAPESShowUIRegion`) shpUI_regionFrame;
+	frameLayout -e -m (`optionVar -q SHAPESShowUIAnimation`) shpUI_animationFrame;
+	frameLayout -e -m (`optionVar -q SHAPESShowUIDriver`) shpUI_driverFrame;
+	
+	if (!`optionVar -q SHAPESShowUIDrivenSet`)
+		shapesUI_filterListByType 1 1;
+	iconTextButton -e -en (`optionVar -q SHAPESShowUIDrivenSet`) shpUI_filterTypeButton;
+	
+	shapesMain_listBlendShapeTargets 1;
+	
+	menuItem -e -en (`optionVar -q SHAPESShowUIWeightDriver`) shpUI_weightDriverDisplayMenuItem;
+	shapesUI_buildShapeDriverOptionMenu;
+	shapesUI_switchDriverUI;
+}
+
+
+global proc shapesUI_switchDefaultSculptTool()
+{
+	//
+	// toggles the default tool for the Maya sculpt tool
+	//
+	int $val = `optionMenu -q -sl shpUI_defaultSculptToolOption`;
+	if ($val == 1)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshSculptTool;
+	else if ($val == 2)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshSmoothTool;
+	else if ($val == 3)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshRelaxTool;
+	else if ($val == 4)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshGrabTool;
+	else if ($val == 5)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshPinchTool;
+	else if ($val == 6)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshFlattenTool;
+	else if ($val == 7)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshFoamyTool;
+	else if ($val == 8)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshSprayTool;
+	else if ($val == 9)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshRepeatTool;
+	else if ($val == 10)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshImprintTool;
+	else if ($val == 11)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshWaxTool;
+	else if ($val == 12)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshScrapeTool;
+	else if ($val == 13)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshFillTool;
+	else if ($val == 14)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshKnifeTool;
+	else if ($val == 15)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshSmearTool;
+	else if ($val == 16)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshBulgeTool;
+	else if ($val == 17)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshAmplifyTool;
+	else if ($val == 18)
+		optionVar -sv SHAPESDefaultMayaSculptTool SetMeshFreezeTool;
+	
+	optionVar -iv SHAPESMayaSculptTool $val;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// driver settings ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildShapeDriverOptionMenu()
+{
+	//
+	// build the option menu for the shape driver
+	//
+	if (`optionMenu -ex shpUI_shapeDriverOption`)
+	{
+		for ($c in `optionMenu -q -ill shpUI_shapeDriverOption`)
+			deleteUI $c;
+	}
+	
+	menuItem -l "None" -p shpUI_shapeDriverOption;
+	menuItem -l "Set Driven Key" -p shpUI_shapeDriverOption;
+	if (`optionVar -q SHAPESShowUIWeightDriver`)
+		menuItem -l "Weight Driver" -p shpUI_shapeDriverOption;
+}
+
+
+global proc shapesUI_switchDriverUI()
+{
+	//
+	// toggle the driver ui elements based on the selection
+	//
+	// don't set the env defaults when first bulding the ui
+	// because the dock control doesn't exist yet
+	if (!`dockControl -q -ex SHAPESDock`)
+		return;
+	
+	optionVar -iv SHAPESDriverTypeSelection (`optionMenu -q -sl shpUI_shapeDriverOption`);
+	
+	setParent shpUI_driverSettingsColumn;
+	
+	// remove all controls
+	string $items[] = `columnLayout -q -ca shpUI_driverSettingsColumn`;
+	if (size($items))
+	{
+		for ($i in $items)
+			deleteUI $i;
+	}
+	
+	int $driverType = `optionMenu -q -sl shpUI_shapeDriverOption`;
+	
+	if ($driverType == 3)
+	{
+		// parent joint field
+		string $parentForm = `formLayout`;
+			string $parentLabel = `text -l "Parent Joint" -w 67 -al "left"`;
+			textField -w 100 shpUI_parentField;
+			string $parentButton = `iconTextButton -w 26 -h 25 -i "SHAPES_select.png" -ann "Select weight driver parent"  -c "shapesMain_getSelection parent"`;
+			formLayout	-e 
+					
+						-af $parentLabel "top" 0 
+						-af $parentLabel "bottom" 0 
+						-af $parentLabel "left" 1 
+						-af shpUI_parentField "top" 1 
+						-af $parentButton "top" 0 
+						-af $parentButton "right" 0 
+					
+						-ac shpUI_parentField "left" 5 $parentLabel 
+						-ac shpUI_parentField "right" 3 $parentButton 
+					
+						$parentForm;
+		setParent ..;
+		
+		separator -style "none" -h 4;
+		
+		rowColumnLayout -nc 2 -cw 1 154 -cw 2 140;
+			optionMenuGrp -l "Axis" -cw2 69 40 -cal 1 "left" shpUI_axisOption;
+				menuItem -l "    X    ";
+				menuItem -l "    Y    ";
+				menuItem -l "    Z    ";
+				optionMenuGrp -e -cc "shapesDriver_setShapeDriverAttribute shpUI_axisOption direction" shpUI_axisOption;
+				shapesUI_addInterpolateOption 1;
+		setParent ..;
+		
+		separator -style "double" -h 8;
+		
+		rowColumnLayout -nc 2 -cw 1 154 -cw 2 140;
+			checkBoxGrp -l "Angle" -v1 1 -cw2 70 60 -cal 1 "left" -cc "shapesUI_toggleDriverTranslateOptions; shapesDriver_setShapeDriverAttribute shpUI_useAngleCheck useRotate" shpUI_useAngleCheck;
+			checkBoxGrp -l "Twist" -v1 0 -cw2 42 60 -cal 1 "left" -cc "shapesDriver_setShapeDriverAttribute shpUI_useTwistCheck twist" shpUI_useTwistCheck;
+			separator -style "none" -h 5;
+			separator -style "none" -h 5;
+			floatFieldGrp -l "Range" -v1 45 -pre 1 -cw2 69 61 -cal 1 "left" -cc "shapesUI_limitFloatField angle" shpUI_rangeField;
+			floatFieldGrp -l "Center" -v1 0 -pre 1 -cw2 40 60 -cal 1 "left" -cc "shapesUI_limitFloatField centerAngle" shpUI_centerField;
+			separator -style "none" -h 4;
+			separator -style "none" -h 4;
+			floatFieldGrp -l "Twist Range" -v1 90 -pre 1 -cw2 69 61 -cal 1 "left" -cc "shapesUI_limitFloatField twistAngle" shpUI_twistAngleField;
+			separator -style "none";
+		setParent ..;
+		
+		separator -style "double" -h 8;
+		
+		rowColumnLayout -nc 2 -cw 1 154 -cw 2 140;
+			checkBoxGrp -l "Distance" -v1 0 -cw2 70 60 -cal 1 "left" -cc "shapesUI_toggleDriverTranslateOptions; shapesDriver_setShapeDriverAttribute shpUI_useDistanceCheck useTranslate" shpUI_useDistanceCheck;
+			checkBoxGrp -l "Grow" -v1 1 -cw2 42 60 -cal 1 "left" -cc "shapesDriver_setShapeDriverAttribute shpUI_useIncreaseCheck grow" shpUI_useIncreaseCheck;
+			separator -style "none" -h 4;
+			separator -style "none" -h 4;
+			floatFieldGrp -l "Min" -v1 0 -pre 2 -cw2 69 61 -cal 1 "left" -cc "shapesUI_limitFloatField translateMin" shpUI_distanceMinField;
+			floatFieldGrp -l "Max" -v1 1 -pre 2 -cw2 40 60 -cal 1 "left" -cc "shapesUI_limitFloatField translateMax" shpUI_distanceMaxField;
+		setParent ..;
+		
+		shapesUI_toggleDriverTranslateOptions;
+	}
+	else if ($driverType == 2)
+	{
+		formLayout -nd 100 -w 200 shpUI_sdkForm;
+		text -l "Attribute" shpUI_sdkAttrLabel;
+		formLayout	-e 
+					
+					-af shpUI_sdkAttrLabel "top" 0 
+					-af shpUI_sdkAttrLabel "bottom" 0 
+					-af shpUI_sdkAttrLabel "left" 1 
+					
+					shpUI_sdkForm;
+		setParent ..;
+		
+		separator -style "none" -h 5;
+		
+		floatFieldGrp	-l "Start/End" 
+						-nf 2 
+						-pre 2 
+						-cw3 69 60 50 
+						-ct3 "left" "left" "left" 
+						-co3 0 0 0 
+						-cc "shapesDriver_setShapeDriverAttribute shpUI_sdkRangeField minMax" 
+						shpUI_sdkRangeField;
+		
+		separator -style "none" -h 5;
+		
+		rowColumnLayout -nc 2 -cw 1 178 -cw 2 145;
+			shapesUI_addInterpolateOption 0;
+			optionMenuGrp	-l "Infinity" 
+							-cw2 50 50 
+							-cal 1 "center" 
+							-cc "shapesDriver_setShapeDriverAttribute shpUI_infinityOption infinity" 
+							shpUI_infinityOption;
+				menuItem -l "None";
+				menuItem -l "Pre";
+				menuItem -l "Post";
+				menuItem -l "Pre/Post";
+		setParent ..;
+		
+		shapesDriver_refreshAttributeMenu;
+	}
+		
+	setParent ..;
+	
+	if ($driverType > 1)
+		shapesUI_addRampWeightsDrivenAttributeOption;
+	
+	shapesDriver_collectJointInfo;
+}
+
+
+global proc shapesUI_addInterpolateOption( int $more )
+{
+	//
+	// adds the option menu for the interpolation type of the shape driver
+	//
+	int $cw[];
+	
+	if ($more)
+		$cw = {40, 50};
+	else
+		$cw = {68, 50};
+	optionMenuGrp -l "Type" -cw2 $cw[0] $cw[1] -cal 1 "left" shpUI_interpolateOption;
+	menuItem -l "Linear";
+	menuItem -l "Slow";
+	menuItem -l "Fast";
+	if ($more)
+	{
+		menuItem -l "Smooth1";
+		menuItem -l "Smooth2";
+		menuItem -l "Curve";
+	}
+	else
+		menuItem -l "Smooth";
+	optionMenuGrp -e -cc "shapesDriver_setShapeDriverAttribute shpUI_interpolateOption interpolation" shpUI_interpolateOption;
+}
+
+
+global proc shapesUI_toggleDriverTranslateOptions()
+{
+	//
+	// enables/disables the weight driver controls based
+	// on the transform choice
+	//
+	int $state = `checkBoxGrp -q -v1 shpUI_useAngleCheck`;
+	checkBoxGrp -e -en $state shpUI_useTwistCheck;
+	floatFieldGrp -e -en $state shpUI_rangeField;
+	floatFieldGrp -e -en $state shpUI_centerField;
+	floatFieldGrp -e -en $state shpUI_twistAngleField;
+	
+	$state = `checkBoxGrp -q -v1 shpUI_useDistanceCheck`;
+	checkBoxGrp -e -en $state shpUI_useIncreaseCheck;
+	floatFieldGrp -e -en $state shpUI_distanceMinField;
+	floatFieldGrp -e -en $state shpUI_distanceMaxField;	
+}
+
+
+global proc shapesUI_addRampWeightsDrivenAttributeOption()
+{
+	//
+	// toggle the driver ui elements based on the selection
+	//
+	global int $gShapes_index;
+	global string $gShapes_bsData[];
+	
+	// don't set the env defaults when first bulding the ui
+	// because the dock control doesn't exist yet
+	if (!`dockControl -q -ex SHAPESDock`)
+		return;
+	
+	setParent shpUI_driverSettingsColumn;
+	
+	if (`columnLayout -q -ex shpUI_rampAttributeColumn`)
+	{
+		// remove all controls
+		string $items[] = `columnLayout -q -ca shpUI_rampAttributeColumn`;
+		if (size($items))
+		{
+			for ($i in $items)
+				deleteUI $i;
+		}
+		deleteUI shpUI_rampAttributeColumn;
+	}
+	
+	if ($gShapes_index != -1)
+	{
+		string $rampPlug = dict_getStringValue($gShapes_bsData[$gShapes_index], "ramp");
+		string $rampNode[] = stringToStringArray($rampPlug, ".");
+		if ($rampPlug != "")
+		{
+			columnLayout -adj 1 shpUI_rampAttributeColumn;
+				separator -st "none" -h 5;
+				frameLayout	-l "Ramp Weights" 
+							-li 3 
+							-cll 0
+							-cl 0
+							-mw 5 
+							-mh 5 
+							shpUI_rampAttributeFrame;
+					formLayout -nd 100 -w 200 shpUI_rampForm;
+						text -l "Attribute" shpUI_rampAttrLabel;
+						optionMenu -cc ("shapesDriver_setShapeDriverAttribute shpUI_rampAttrOption ramp") shpUI_rampAttrOption;
+						formLayout	-e 
+					
+									-af shpUI_rampAttrLabel "top" 0 
+									-af shpUI_rampAttrLabel "bottom" 0 
+									-af shpUI_rampAttrLabel "left" 1 
+					
+									-af shpUI_rampAttrOption "top" 0 
+									-af shpUI_rampAttrOption "bottom" 0 
+									-af shpUI_rampAttrOption "right" 23 
+				
+									-ac shpUI_rampAttrOption "left" 17 "shpUI_rampAttrLabel" 
+					
+									shpUI_rampForm;
+						setParent ..;
+					setParent ..;
+			setParent ..;
+		
+			string $attr[] = `listAttr -k $rampNode[0]`;
+			string $blendAttr[] = `listAttr -m -st "blendCurve_Position" $rampNode[0]`;
+			$attr = stringArrayCatenate($attr, $blendAttr);
+			for ($a in $attr)
+				menuItem -l $a -p shpUI_rampAttrOption;
+			optionMenu -e -v "offset" shpUI_rampAttrOption;
+		}
+	}
+		
+	setParent ..;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// driven key set ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_showDrivenSetUI()
+{
+	//
+	// activates the driven set layout in the driven set frame
+	//
+	setParent shpUI_drivenSetFrame;
+	
+		rowLayout -nc 11 shpUI_drivenSetLayout;
+			iconTextButton -w 26 -h 25 -i "SHAPES_drivenSet.png" -c "shapesSet_editDrivenSetAttributes 1" -ann "Create new set from selection";
+			iconTextButton -w 26 -h 25 -i "SHAPES_regionEdit.png" -c "shapesSet_editDrivenSetAttributes 0" -ann "Edit driven set" -en 0 shpUI_editDrivenSetButton;
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 26 -h 25 -i "SHAPES_drivenSetKey.png" -c shapesSet_setKey -ann "Set key for current channel value";
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 26 -h 25 -i "SHAPES_drivenSetPreviousKeyOff.png" -c shapesGlobal_doNothing -ann "Move to previous key frame" shpUI_drivenSetPreviousButton;
+			text -w 30 -l "0 / 0" -al "center" shpUI_drivenSetKeyCount;
+			iconTextButton -w 26 -h 25 -i "SHAPES_drivenSetNextKeyOff.png" -c shapesGlobal_doNothing -ann "Move to next key frame" shpUI_drivenSetNextButton;
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 26 -h 25 -i "SHAPES_trash.png" -c "shapesSet_deleteKey 0" -ann "Removes the key at the current position";
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyDeleteAll.png" -c "shapesSet_deleteKey 1" -ann "Removes all keys";
+		setParent ..;
+	
+	setParent ..;
+	
+	shapesUI_toggleDrivenSetUI 0;
+}
+
+
+global proc shapesUI_toggleDrivenSetUI( int $enable )
+{
+	//
+	// enable/disable the driven set buttons based on the target selection
+	//
+	string $state = "";
+	if (!$enable)
+	{
+		$state = "Off";
+		iconTextButton -e -c shapesGlobal_doNothing shpUI_drivenSetPreviousButton;
+		iconTextButton -e -c shapesGlobal_doNothing shpUI_drivenSetNextButton;
+	}
+	else
+	{
+		iconTextButton -e -c "shapesSet_stepNextDrivenKey 0" shpUI_drivenSetPreviousButton;
+		iconTextButton -e -c "shapesSet_stepNextDrivenKey 1" shpUI_drivenSetNextButton;
+	}
+	
+	iconTextButton -e -i ("SHAPES_drivenSetPreviousKey" + $state + ".png") shpUI_drivenSetPreviousButton;
+	iconTextButton -e -i ("SHAPES_drivenSetNextKey" + $state + ".png") shpUI_drivenSetNextButton;
+	
+	text -e -l "- / -" shpUI_drivenSetKeyCount;
+	
+	iconTextButton -e -en $enable shpUI_editDrivenSetButton;
+}
+
+
+global proc shapesUI_buildEditDrivenSetUI( int $newSet )
+{
+	//
+	// show the window for editing the driven set attributes
+	//
+	if (`window -ex SHAPESEditDrivenSetWin`)
+		deleteUI SHAPESEditDrivenSetWin;
+	
+	if (`windowPref -ex SHAPESEditDrivenSetWin`)
+		windowPref -r SHAPESEditDrivenSetWin;
+	
+	shapesUI_setColorManagedPots 0;
+	
+	string $info = "";
+	if (!$newSet)
+		$info = "Edit ";
+	
+	window -t ($info + "Driven Set Attributes") -wh 450 300 -mb 1 SHAPESEditDrivenSetWin;
+	
+	menu -l "Edit";
+	menuItem -l "Infinity" -ann (uiRes("m_SHAPES_ui.kSetInfinity")) -cb 1 -c ("shapesSet_toggleCurveInfinity #1") shpUI_drivenSetInfinityItem;
+	menuItem -d 1;
+	menuItem -l "Add scene selection to set" -c shapesSet_addToSet shpUI_drivenSetAddItem;
+	menuItem -l "Remove scene selection from set" -c shapesSet_removeFromSet shpUI_drivenSetRemoveItem;
+	if (`shapesGlobal_getMayaVersion` >= 2014)
+	{
+		menuItem -d 1;
+		menuItem -l "Color Preferences..." -c shapesUI_buildDrivenSetPrefsUI;
+	}
+	
+	string $drivenSetMainFrame = `frameLayout -lv 0 -cll 0 -cl 0 -mw 2 -mh 2`;
+	
+		string $listForm = `formLayout`;
+	
+			string $memberLabel = `text -l "Set Members"`;
+			string $attrLabel = `text -l "Member Attributes"`;
+			string $setAttrLabel = `text -l "Set Attributes"`;
+	
+			string $memberList = `iconTextScrollList -ams 1 -h 150 -sc shapesSet_listMemberAttributes shpUI_drivenSetMemberList`;
+			string $attrList = `iconTextScrollList -ams 1 -h 150 -dcc "shapesSet_toggleDrivenSetAttribute shpUI_drivenSetAttributeList" shpUI_drivenSetAttributeList`;
+			string $setAttrList = `iconTextScrollList -ams 1 -h 150 -dcc "shapesSet_toggleDrivenSetAttribute shpUI_drivenSetKeyList" shpUI_drivenSetKeyList`;
+	
+			string $buttonClear = `button -l "Select All" -h 25 -ann (uiRes("m_SHAPES_ui.kSelectAllMembers")) -c shapesSet_memberListSelectAll`;
+			string $buttonAdd = `button -l "Add Attribute" -h 25 -ann (uiRes("m_SHAPES_ui.kAddSetAttribute")) -c "shapesSet_toggleDrivenSetAttribute shpUI_drivenSetAttributeList"`;
+			string $buttonRemove = `button -l "Remove Attribute" -h 25 -ann (uiRes("m_SHAPES_ui.kRemoveSetAttribute")) -c "shapesSet_toggleDrivenSetAttribute shpUI_drivenSetKeyList"`;
+			string $buttonInvert = `button -l "Mirror Inverted" -h 25 -ann (uiRes("m_SHAPES_ui.kMirrorInvertedAttribute")) -c shapesSet_toggleDrivenSetInvertAttribute`;
+	
+			string $buttonCancel = `button -l "Close" -h 25 -ann (uiRes("m_SHAPES_ui.kCloseSetWindow")) -c shapesSet_closeDrivenSetAttributes`;
+			string $buttonApply = `button -l "Apply" -h 25 -ann (uiRes("m_SHAPES_ui.kSetApply")) -c shapesSet_applyDrivenSetAttribute shpUI_drivenSetApplyButton`;
+	
+			formLayout	-e 
+						-af $memberLabel "top" 5 
+						-af $memberLabel "left" 5 
+						-af $attrLabel "top" 5 
+						-af $setAttrLabel "top" 5 
+						-af $setAttrLabel "right" 3 
+						-af $memberList "left" 3 
+						-af $memberList "bottom" 65 
+						-af $attrList "bottom" 65 
+						-af $setAttrList "right" 3 
+						-af $setAttrList "bottom" 65 
+						-af $buttonClear "left" 3 
+						-af $buttonApply "left" 3 
+						-af $buttonApply "bottom" 3 
+						-af $buttonCancel "bottom" 3 
+						-af $buttonCancel "right" 3 
+						-af $buttonInvert "right" 3 
+				
+						-ac $attrLabel "left" 5 $memberLabel 
+						-ac $attrLabel "right" 5 $setAttrLabel 
+						-ac $memberList "top" 5 $memberLabel 
+						-ac $attrList "top" 5 $attrLabel 
+						-ac $attrList "left" 5 $memberList 
+						-ac $attrList "right" 5 $setAttrList 
+						-ac $setAttrList "top" 5 $setAttrLabel 
+						-ac $buttonClear "bottom" 10 $buttonApply 
+						-ac $buttonAdd "bottom" 10 $buttonApply 
+						-ac $buttonRemove "bottom" 10 $buttonCancel 
+						-ac $buttonInvert "bottom" 10 $buttonCancel 
+				
+						-ap $memberLabel "right" 0 33 
+						-ap $setAttrLabel "left" 0 66 
+						-ap $memberList "right" 0 33 
+						-ap $setAttrList "left" 0 66 
+						-ap $buttonClear "right" 0 25 
+						-ap $buttonAdd "left" 5 25 
+						-ap $buttonAdd "right" 0 50 
+						-ap $buttonRemove "left" 5 50 
+						-ap $buttonRemove "right" 0 75 
+						-ap $buttonInvert "left" 5 75 
+						-ap $buttonApply "right" 0 50 
+						-ap $buttonCancel "left" 5 50 
+				
+						$listForm;
+	
+		setParent ..;
+	
+	setParent ..;
+	
+	showWindow SHAPESEditDrivenSetWin;
+}
+
+
+global proc shapesUI_buildDrivenSetPrefsUI()
+{
+	//
+	// show the window for the diven set preferences
+	//
+	if (`window -ex SHAPESDrivenSetPrefsWin`)
+		deleteUI SHAPESDrivenSetPrefsWin;
+	
+	if (`windowPref -ex SHAPESDrivenSetPrefsWin`)
+		windowPref -r SHAPESDrivenSetPrefsWin;
+	
+	float $v[] = shapesUI_getDrivenSetPrefs();
+	
+	window -t "Driven Set Color Preferences" -wh 350 100 -s 0 SHAPESDrivenSetPrefsWin;
+	
+	frameLayout -lv 0 -cll 0 -cl 0;
+	
+		columnLayout -adj 1;
+			separator -style "none" -h 5;
+			
+			colorSliderGrp -l "Driven" -h 25 -rgb $v[0] $v[1] $v[2] -cw3 60 50 100 -cal 1 "right" -ct3 "right" "both" "right" -co3 5 0 5 shpUI_drivenSetKeyedColor;
+			colorSliderGrp -l "Inverted" -h 25 -rgb $v[3] $v[4] $v[5] -cw3 60 50 100 -cal 1 "right" -ct3 "right" "both" "right" -co3 5 0 5 shpUI_drivenSetInvertedColor;
+	
+			separator -style "none" -h 10;
+			
+			string $buttonForm = `formLayout`;
+			string $saveBtn = `button -l "Set Colors" -h 30 -c "shapesUI_closeDrivenSetPrefsUI 1"`;
+			string $closeBtn = `button -l "Close" -h 30 -c "shapesUI_closeDrivenSetPrefsUI 0"`;
+			formLayout	-e 
+				
+						-af $saveBtn "top" 0 
+						-af $saveBtn "bottom" 5 
+						-af $saveBtn "left" 5 
+						-af $closeBtn "top" 0 
+						-af $closeBtn "bottom" 5 
+						-af $closeBtn "right" 5 
+				
+						-ap $saveBtn "right" 5 50 
+				
+						-ac $closeBtn "left" 5 $saveBtn 
+				
+						$buttonForm;
+											
+			setParent ..;
+	
+		setParent ..;
+	setParent ..;
+	
+	showWindow SHAPESDrivenSetPrefsWin;
+}
+
+
+global proc float[] shapesUI_getDrivenSetPrefs()
+{
+	//
+	// returns a list with all preference values for the driven set preferences window
+	//
+	string $keyedString = `optionVar -q SHAPESDrivenSetKeyedColor`;
+	float $values[] = shapesArray_stringToFloatArray($keyedString, ",");
+	string $invertedString = `optionVar -q SHAPESDrivenSetInvertedColor`;
+	float $valuesInverted[] = shapesArray_stringToFloatArray($invertedString, ",");
+	for ($vi in $valuesInverted)
+		$values[size($values)] = $vi;
+	return $values;
+}
+
+
+global proc shapesUI_closeDrivenSetPrefsUI( int $store )
+{
+	//
+	// store the driven set preferences and close the window
+	//
+	if ($store)
+	{
+		float $values[] = `colorSliderGrp -q -rgb shpUI_drivenSetKeyedColor`;
+		optionVar -sv SHAPESDrivenSetKeyedColor (shapesArray_floatArrayToString($values, ","));
+		$values = `colorSliderGrp -q -rgb shpUI_drivenSetInvertedColor`;
+		optionVar -sv SHAPESDrivenSetInvertedColor (shapesArray_floatArrayToString($values, ","));
+		shapesSet_memberListSelectAll;
+	}
+	
+	deleteUI SHAPESDrivenSetPrefsWin;
+}
+
+
+global proc shapesUI_setColorManagedPots( int $enable )
+{
+	//
+	// turn off color management for color pots
+	// for Maya 2016 and up
+	//
+	global int $gShapes_managedColorPots;
+	
+	if (`shapesGlobal_getMayaVersion` < 2016)
+		return;
+	
+	if (!$enable)
+	{
+		$gShapes_managedColorPots = `colorManagementPrefs -q -cmp`;
+		colorManagementPrefs -e -cmp 0;
+	}
+	else
+		$gShapes_managedColorPots = `colorManagementPrefs -e -cmp $gShapes_managedColorPots`;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// edit combo ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_showEditComboUI( int $show )
+{
+	//
+	// activates the edit combo button layout when in combo edit mode
+	//
+	global int $gShapes_comboProcess;
+	
+	if (!$show)
+	{
+		rowLayout -e -m 0 shpUI_comboButtonLayout;
+		string $items[] = `rowLayout -q -ca shpUI_comboButtonLayout`;
+		for ($i in $items)
+			deleteUI $i;
+		return;
+	}
+	else
+	{
+		setParent shpUI_comboButtonLayout;
+		rowLayout -e -m 1 shpUI_comboButtonLayout;
+		
+		//
+		// edit combo
+		//
+		if ($gShapes_comboProcess)
+		{
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboDriverAdd.png" -c "shapesCombo_addRemoveComboItems 1" -ann "Add to combo";
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboDriverRemove.png" -c "shapesCombo_addRemoveComboItems 0" -ann "Remove from combo";
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboSetTarget.png" -c shapesCombo_setComboTarget -ann "Set combo target";
+			separator -hr 0 -h 20 -w 12 -style "none";
+			separator -hr 0 -h 20 -w 1 -style "none";
+			separator -hr 0 -h 20 -w 12 -style "none";
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboUpdate.png" -c shapesCombo_updateCombo -ann "Update combo";
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboCancel.png" -c shapesCombo_cancelEditCombo -ann "Cancel";
+		}
+		//
+		// edit sequence
+		//
+		else
+		{
+			iconTextButton -w 30 -h 25 -i "SHAPES_sequenceTargetAdd.png" -c "shapesDriver_addRemoveSequenceItems 1" -ann "Add to sequence";
+			iconTextButton -w 30 -h 25 -i "SHAPES_sequenceTargetRemove.png" -c "shapesDriver_addRemoveSequenceItems 0" -ann "Remove from sequence";
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 30 -h 25 -i "SHAPES_sequenceOrder.png" -c shapesDriver_orderSequence -ann "Sort ascending";
+			separator -hr 0 -h 20 -w 12 -style "out";
+			optionMenu -l "Type" shpUI_sequenceCurveOption;
+				menuItem -l "Smooth";
+				menuItem -l "Linear";
+				menuItem -l "Silke";
+			separator -hr 0 -h 20 -w 12 -style "none";
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboUpdate.png" -c shapesDriver_updateSequence -ann "Update sequence";
+			iconTextButton -w 30 -h 25 -i "SHAPES_comboCancel.png" -c shapesDriver_cancelEditSequence -ann "Cancel";
+		}
+		setParent ..;
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// animation ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_showAnimationUI()
+{
+	//
+	// activates the animation layout in the animation frame
+	//
+	setParent shpUI_animationFrame;
+	
+		rowLayout -nc 10 shpUI_animationLayout;
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyWeightZero.png" -c "shapesAnimation_keyWeight 0" -ann "Key selected with zero weight";
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyWeightValue.png" -c "shapesAnimation_keyWeight 0.5" -ann "Key selected with current weight";
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyWeightFull.png" -c "shapesAnimation_keyWeight 1" -ann "Key selected with full weight";
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 26 -h 25 -i "SHAPES_trash.png" -c "shapesAnimation_keyWeight -1" -ann "Remove key at current frame";
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyDeleteAll.png" -c "shapesAnimation_keyWeight -3" -ann "Remove all keys";
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyWeightRange.png" -c "shapesAnimation_keyWeight 2" -ann "Key selected with range";
+			intFieldGrp -l "Pre/Post" -nf 1 -v1 5 -cw2 55 30 -ct2 "right" "both" -co2 4 0 shpUI_keyPaddingField;
+			iconTextButton -w 26 -h 25 -i "SHAPES_keyDeleteRange.png" -c "shapesAnimation_keyWeight -2" -ann "Removes the key at the current frame and the previous and next key with a zero value";
+		setParent ..;
+		
+		rowLayout -nc 7;
+			symbolCheckBox 	-w 25 
+							-h 25 
+							-i "SHAPES_shotFix.png" 
+							-cc "shapesUI_toggleShotFixUI #1"
+							-ann "Toggle shot fix mode" 
+							shpUI_shotFixCheck;
+			iconTextCheckBox 	-w 55 
+								-h 25 
+								-st "textOnly" 
+								-l "Reset" 
+								-en 0 
+								-onc shapesAnimation_shotFixResetChannels 
+								-ofc "$gShapes_shotFixReset = 0; currentTime `currentTime -q`;" 
+								-ann "Reset mesh" 
+								shpUI_shotFixRestCheck;
+			separator -hr 0 -h 20 -w 12 -style "out";
+			iconTextButton -w 26 -h 25 -i "SHAPES_drivenSetPreviousKey.png" -en 0 -c "shapesAnimation_jumpToNextShape -1" -ann "Move to previous shape" shpUI_shotFixPreviousButton;
+			iconTextButton -w 26 -h 25 -i "SHAPES_drivenSetNextKey.png" -en 0 -c "shapesAnimation_jumpToNextShape 1" -ann "Move to next shape" shpUI_shotFixNextButton;
+			separator -hr 0 -h 20 -w 12 -style "out";
+			textFieldGrp -l "Prefix" -cw2 35 107 -ct2 "right" "both" -co2 4 0 -en 0 shpUI_shotPrefixField;
+		setParent ..;
+		
+	setParent ..;
+}
+
+
+global proc shapesUI_toggleShotFixUI( int $state )
+{
+	iconTextCheckBox -e -en $state shpUI_shotFixRestCheck;
+	if (!$state)
+		iconTextCheckBox -e -v 0 shpUI_shotFixRestCheck;
+	iconTextButton -e -en $state shpUI_shotFixPreviousButton;
+	iconTextButton -e -en $state shpUI_shotFixNextButton;
+	textFieldGrp -e -en $state shpUI_shotPrefixField;
+			
+	if ($state)
+		shapesAnimation_shotFixGetPrefix;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// shape weights ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_showWeightsUI()
+{
+	//
+	// activates the shape weights layout in the weights frame
+	//
+	setParent shpUI_weightsFrame;
+	
+		rowLayout -nc 13 shpUI_shapeWeightsLayout;
+			iconTextButton -w 28 -h 25 -i "SHAPES_weightPaint.png" -c shapesWeights_paintShapeWeights -ann "Paint weights for the selected shape" shpUI_paintWeightsButton;
+			popupMenu shpUI_paintWeightsPopup;
+			separator -hr 0 -h 20 -w 10 -style "out";
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightCopy.png" -c shapesWeights_copyShapeWeights -ann "Copy shape weights";
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightPaste.png" -c "shapesWeights_removeShapeWeights 1 {}" -ann "Paste shape weights";
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightInvert.png" -c shapesWeights_invertShapeWeights -ann "Invert shape weights";
+			popupMenu shpUI_mirrorWeightsPopup;
+				menuItem -l "Mirror" -p shpUI_mirrorWeightsPopup -c shapesWeights_mirrorShapeWeights;
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightTrimL.png" -c "shapesWeights_trimShapeWeights 0" -ann "Trim shape weights on negative axis";
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightTrimR.png" -c "shapesWeights_trimShapeWeights 1" -ann "Trim shape weights on positive axis";
+			separator -hr 0 -h 20 -w 10 -style "out";
+			string $cmd = "shapesWeights_exportShapeWeights \"\" 0 0 0";
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightExport.png" -c $cmd -ann "Export shape weights" shpUI_exportWeightsButton;
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightImport.png" -c "shapesWeights_importShapeWeights 0" -ann "Import selected weights from the list" shpUI_importWeightsButton;
+			separator -hr 0 -h 20 -w 10 -style "out";
+			iconTextButton -w 25 -h 25 -i "SHAPES_weightFreeze.png" -c "shapesWeights_freezeShapeWeights {}" -ann "Freeze and delete shape weights";
+			iconTextButton -w 25 -h 25 -i "SHAPES_trash.png" -c "shapesWeights_removeShapeWeights 0 {}" -ann "Delete shape weights";
+		setParent ..;
+	
+		string $weightListForm = `formLayout`;
+	
+			int $value = `optionVar -q SHAPESWeightTreeSize`;
+			textScrollList -h $value -ams 0 -en 1 -dcc "shapesWeights_renameWeightMap weights" shpUI_shapeWeightsList;
+			popupMenu shpUI_shapeWeightContextMenu;
+				menuItem -l "Add To Current" -en 0 -c "shapesWeights_combineWeightMap 1";
+				menuItem -l "Subtract From Current" -en 0 -c "shapesWeights_combineWeightMap 0";
+				menuItem -d 1;
+				menuItem -l "Delete" -en 0 -c "shapesWeights_deleteWeightMap weights";
+			string $shrinkButton = `iconTextButton -w 22 -h 25 -i "SHAPES_listRetract.png" -c "shapesUI_resizeScrollList 0 weight" -ann "Shrink weight list"`;
+			string $growButton = `iconTextButton -w 22 -h 25 -i "SHAPES_listExpand.png" -c "shapesUI_resizeScrollList 1 weight" -ann "Grow weight list"`;
+	
+			formLayout	-e 
+				
+						-af shpUI_shapeWeightsList "top" 0 
+						-af shpUI_shapeWeightsList "bottom" 0 
+						-af shpUI_shapeWeightsList "left" 1 
+						-af $shrinkButton "top" 0 
+						-af $shrinkButton "right" 5 
+						-af $growButton "right" 5 
+				
+						-ac shpUI_shapeWeightsList "right" 3 $shrinkButton 
+						-ac $growButton "top" 3 $shrinkButton 
+				
+						$weightListForm;
+		setParent ..;
+	
+	setParent ..;
+	
+	shapesUtil_buildImportMenu "shpUI_shapeWeightsList";
+	
+	// callback for the select command of the scroll list
+	textScrollList -e -sc "shapesUI_toggleWeightsContextMenu 1" shpUI_shapeWeightsList;
+}
+
+
+global proc shapesUI_toggleWeightsUI( int $enable )
+{
+	//
+	// enable/disable the weights buttons based on the sculpt mode
+	//
+	string $items[] = `rowLayout -q -ca shpUI_shapeWeightsLayout`;
+	for ($i in $items)
+		control -e -m 1 $i;
+	
+	if ($enable)
+	{
+		string $cmd = "shapesWeights_exportShapeWeights \"\" 0 0 0";
+		iconTextButton -e -c $cmd -ann "Export shape weights" shpUI_exportWeightsButton;
+		iconTextButton -e -c "shapesWeights_importShapeWeights 0" -ann "Import selected weights from the list" shpUI_importWeightsButton;
+	}
+	else
+	{
+		string $cmd = "shapesWeights_exportShapeWeights \"\" 1 0 0";
+		iconTextButton -e -m (!$enable) -c $cmd -ann "Save frozen areas to weight map" shpUI_exportWeightsButton;
+		iconTextButton -e -m (!$enable) -c "shapesWeights_importShapeWeights 1" -ann "Load frozen areas from weight map" shpUI_importWeightsButton;
+	}
+}
+
+
+global proc shapesUI_toggleWeightsContextMenu( int $enable )
+{
+	//
+	// enable/disable the right-click menu for the weights list
+	//
+	if (`popupMenu -ex shpUI_shapeWeightContextMenu`)
+	{
+		string $items[] = `popupMenu -q -ia shpUI_shapeWeightContextMenu`;
+		for ($i in $items)
+			menuItem -e -en $enable $i;
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// region ui
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_showRegionUI()
+{
+	//
+	// activates the region layout in the region frame
+	//
+	setParent shpUI_regionFrame;
+	
+		string $regionForm = `formLayout shpUI_regionLayout`;
+	
+			string $buttonNew = `iconTextButton -w 25 -h 25 -i "SHAPES_regionNew.png" -c "shapesRegion_editRegionMap 1" -ann "New region map"`;
+			string $buttonEdit = `iconTextButton -w 25 -h 25 -i "SHAPES_regionEdit.png" -c "shapesRegion_editRegionMap 0" -ann "Edit region map"`;
+	
+			string $sep1 = `separator -hr 0 -h 20 -w 10 -style "out"`;
+			string $buttonLoad = `iconTextButton -w 25 -h 25 -i "SHAPES_weightImport.png" -c "shapesRegion_loadRegionMap" -ann "Load region map"`;
+			popupMenu;
+				menuItem -l "Unload" -en 0 -c ("shapesRegion_clearRegionData \"\"") shpUI_unloadRegionItem;
+			string $nameField = `textField -ed 0 shpUI_currentRegionNameField`;
+			string $sep2 = `separator -hr 0 -h 20 -w 10 -style "out"`;
+			string $buttonExtract = `iconTextButton -w 28 -h 25 -i "SHAPES_regionExtract.png" -c shapesRegion_extractRegionMap -ann "Extract region map to targets"`;
+			string $buttonExport = `iconTextButton -w 28 -h 25 -i "SHAPES_weightExport.png" -c shapesRegion_exportRegionsToWeights -ann "Export region map as weight maps"`;
+	
+			formLayout	-e 
+				
+						-af $buttonNew "top" 1 
+						-af $buttonNew "left" 1 
+						-af $buttonEdit "top" 1 
+						-af $sep1 "top" 1 
+						-af $buttonLoad "top" 1 
+						-af $nameField "top" 1 
+						-af $sep2 "top" 1 
+						-af $buttonExtract "top" 1 
+						-af $buttonExport "top" 1 
+						-af $buttonExport "right" 13 
+				
+						-ac $buttonEdit "left" 0 $buttonNew 
+						-ac $sep1 "left" 0 $buttonEdit 
+						-ac $buttonLoad "left" 0 $sep1 
+						-ac $nameField "left" 5 $buttonLoad 
+						-ac $nameField "right" 5 $sep2 
+						-ac $sep2 "right" 2 $buttonExtract 
+						-ac $buttonExtract "right" 2 $buttonExport 
+				
+						$regionForm;
+	
+		setParent ..;
+		
+		//--------------
+		// color buttons
+		//--------------
+	
+		rowLayout -nc 11 -en 0 shpUI_colorButtonsLayout;
+			
+			iconTextButton -w 28 -h 25 -i "SHAPES_weightPaint.png" -c shapesRegion_enterPaintRegionMode -ann "Paint regions for the selected shape" shpUI_paintRegionButton;
+			popupMenu shpUI_paintRegionPopup;
+			
+			separator -hr 0 -h 20 -w 10 -style "out";
+			
+			for ($i = 0; $i < 6; $i ++)
+			{
+				iconTextButton	-w 32 -h 25 -i ("SHAPES_regionColor" + ($i + 1) + ".png") -c ("shapesRegion_paintRegionColor " + $i) ("shpUI_regionColor" + $i);
+				popupMenu ("shpUI_regionColorMenu" + $i);
+				menuItem -l "Brush Reflection" -c "ArtPaintBlendShapeWeightsTool; artisanToggleReflection;";
+				menuItem -l "Color Ramp" -c "artAttrCtx -e -ucr (1 - `artAttrCtx -q -ucr artAttrBlendShapeContext`) artAttrBlendShapeContext;";
+				menuItem -d 1;
+				menuItem -l "Set Brush Color To White" -c "artAttrCtx -e -value 1 `currentCtx`";
+				menuItem -l "Set Brush Color To Black" -c "artAttrCtx -e -value 0 `currentCtx`";
+				menuItem -d 1;
+				menuItem -l "Flush Vertices With White" -c ("shapesWeights_shapeWeightsFlush 1");
+				menuItem -l "Flush Vertices With Black" -c ("shapesWeights_shapeWeightsFlush 0");
+				menuItem -d 1;
+				menuItem -l "Smooth Region" -c "ArtPaintBlendShapeWeightsTool; artAttrCtx -e -sao \"smooth\" `currentCtx`; artAttrCtx -e -clear `currentCtx`; artAttrCtx -e -sao \"absolute\" `currentCtx`;";
+				menuItem -l "Set From Weight Map" -c ("shapesRegion_setFromSelectedWeightMap " + $i);
+				menuItem -d 1;
+				menuItem -l "Clear" -c ("shapesRegion_clearRegion " + $i);
+			}
+	
+			separator -hr 0 -h 20 -w 10 -style "out";
+	
+			iconTextButton -w 28 -h 25 -en 0 -i "SHAPES_regionColors.png" -c "shapesRegion_showFullColorMap 1" -ann "Display all regions with a color gradient" shpUI_regionShowColors;
+			iconTextButton -w 28 -h 25 -en 0 -i ("SHAPES_regionPartials" + `optionVar -q SHAPESColorDisplayPartialWeights` + ".png") -c "shapesRegion_showFullColorMap 0" -ann "Display all partial weights. Right-click to assign the partial weights to a region in object or component mode." shpUI_regionShowPartials;
+			popupMenu shpUI_assignPartialWeightsMenu;
+			
+		setParent ..;
+	
+		shapesUI_enableRegionColorButtonMenu 0;
+	
+		//--------------
+		// region list
+		//--------------
+	
+		string $regionListForm = `formLayout`;
+	
+			int $value = `optionVar -q SHAPESRegionTreeSize`;
+			textScrollList -h $value -ams 0 -en 1 -dcc "shapesWeights_renameWeightMap region" shpUI_regionList;
+			popupMenu;
+				menuItem -l "Delete" -en 0 -c "shapesWeights_deleteWeightMap region" shpUI_deleteRegionItem;
+			string $shrinkButton = `iconTextButton -w 22 -h 25 -i "SHAPES_listRetract.png" -c "shapesUI_resizeScrollList 0 region" -ann "Shrink region list"`;
+			string $growButton = `iconTextButton -w 22 -h 25 -i "SHAPES_listExpand.png" -c "shapesUI_resizeScrollList 1 region" -ann "Grow region list"`;
+	
+			formLayout	-e 
+						
+						-af shpUI_regionList "top" 0 
+						-af shpUI_regionList "bottom" 0 
+						-af shpUI_regionList "left" 1 
+						-af $shrinkButton "top" 0 
+						-af $shrinkButton "right" 5 
+						-af $growButton "right" 5 
+						
+						-ac shpUI_regionList "right" 3 $shrinkButton 
+						-ac $growButton "top" 3 $shrinkButton 
+						
+						$regionListForm;
+		setParent ..;
+	
+	setParent ..;
+	
+	shapesUtil_buildImportMenu "shpUI_regionList";
+	
+	// callback for the select command of the scroll list
+	textScrollList -e -sc "menuItem -e -en 1 shpUI_deleteRegionItem" shpUI_regionList;
+}
+
+
+global proc shapesUI_buildRegionLabelUI( int $new )
+{
+	//
+	// build the index window for the regions
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_left[];
+	
+	if (`window -ex SHAPESRegionSettingsWin`)
+		deleteUI SHAPESRegionSettingsWin;
+	
+	if (`windowPref -ex SHAPESRegionSettingsWin`)
+		windowPref -r SHAPESRegionSettingsWin;
+	
+	window -t "Region Map Settings" -w 450 -h 214 SHAPESRegionSettingsWin;
+	
+	string $labelForm = `formLayout`;
+	
+		string $listLayout = `columnLayout -adj 1`;
+	
+			string $nameForm = `formLayout`;
+			string $label = `text -l "Map Name"`;
+			string $field = `textFieldGrp -w 227 shpUI_regionNameField`;
+			string $parentCheck = `checkBox -l "Parent To Source Shape" shpUI_regionParentCheck`;
+			formLayout	-e 
+				
+						-af $label "top" 5 
+						-af $label "left" 5 
+						-af $field "top" 0 
+						-af $parentCheck "top" 2 
+				
+						-ac $field "left" 10 $label 
+						-ac $parentCheck "left" 6 $field 
+				
+						$nameForm;
+		setParent ..;
+	
+		separator -style "none" -h 10;
+		
+		// get the weight maps for the custom split option
+		string $exportPath = shapesUtil_getExportPath("/weights/" + $gShapes_bsNode, 0);
+		string $maps[];
+		if ($exportPath != "")
+			$maps = `getFileList -fld $exportPath -fs "*.bsw"`;
+	
+		for ($i = 0; $i < 6; $i ++)
+		{
+			string $regionRowForm = `formLayout`;
+		
+				string $button = `image -i ("SHAPES_regionColor" + ($i + 1) + ".png") -w 25 -h 25`;
+	
+				string $label = `textField -tx "" -w 100 ("shpUI_regionLabel" + $i)`;
+		
+				popupMenu;
+					menuItem -l "<shape>" -c ("shapesUI_insertRegionLabelKeyword " + $label +  " \"<shape>\"");
+					menuItem -d 1;
+					for ($r in stringToStringArray(shapesUI_getUserRegionLabels(), ", "))
+						menuItem -l $r -c ("textField -e -tx " + $r + " " + $label);
+		
+				string $split = `checkBox -l "Split" ("shpUI_regionSplitCheck" + $i)`;
+				
+				string $splitMapField = `textField -tx "" -w 80 -ed 0 ("shpUI_regionSplitMapField" + $i)`;
+				popupMenu -b 1 -p $splitMapField shpUI_customSplitMapPopUp;
+					menuItem -l "Clear" -c ("shapesUI_setCustomRegionSplitMap " + $i + " Clear");
+					menuItem -d 1;
+					for ($m in $maps)
+					{
+						string $name[] = stringToStringArray($m, ".");
+						menuItem -l $name[0] -c ("shapesUI_setCustomRegionSplitMap " + $i + " " + $name[0]);
+					}
+		
+				string $blendLabel = `text -l "Blend"`;
+		
+				string $value = `floatField -pre 2 -w 40 ("shpUI_regionSplitWidth" + $i)`;
+		
+				string $identLabel = `text -l "Identifier"`;
+		
+				string $identifier = `textField -tx "" -ed 0 -w 60 ("shpUI_regionIdentifier" + $i)`;
+				popupMenu -b 1 -p $identifier;
+					menuItem -l "Clear" -c ("textField -e -tx \"\" " + $identifier);
+					menuItem -d 1;
+					for ($r in $gShapes_left)
+						menuItem -l $r -c ("textField -e -tx " + $r + " " + $identifier);
+	
+				formLayout	-e 
+							
+							-af $button "top" 0 
+							-af $button "left" 3 
+							-af $label "top" 0 
+							-af $split "top" 0 
+							-af $splitMapField "top" 0 
+							-af $blendLabel "top" 2 
+							-af $value "top" 0 
+							-af $identLabel "top" 2 
+							-af $identifier "top" 0 
+							-af $identifier "right" 10 
+							
+							-ac $label "left" 5 $button 
+							-ac $label "right" 5 $split 
+							-ac $split "right" 6 $splitMapField 
+							-ac $splitMapField "right" 12 $blendLabel 
+							-ac $blendLabel "right" 2 $value 
+							-ac $value "right" 15 $identLabel 
+							-ac $identLabel "right" 5 $identifier 
+							
+							$regionRowForm;
+			setParent ..;
+		}
+	
+		setParent ..;
+	
+		string $button = `button -l "Set" -h 25 -c ("shapesRegion_storeRegionMap " + $new)`;
+
+		formLayout	-e 
+					
+					-af $listLayout "top" 5 
+					-af $listLayout "left" 0 
+					-af $listLayout "bottom" 25 
+					-af $listLayout "right" 0 
+					-af $button "left" 0 
+					-af $button "right" 0 
+					-af $button "bottom" 0 
+					
+					-ac $button "top" 0 $listLayout 
+					
+					$labelForm;
+	setParent ..;
+	
+	showWindow SHAPESRegionSettingsWin;
+}
+
+
+global proc shapesUI_setCustomRegionSplitMap( int $id, string $label )
+{
+	//
+	// sets the custom split map from the split map option menu
+	//
+	if ($label == "Clear")
+		$label = "";
+	textField -e -tx $label -fn "plainLabelFont" ("shpUI_regionSplitMapField" + $id);
+}
+
+
+global proc shapesUI_enableRegionColorButtonMenu( int $enable )
+{
+	//
+	// enables/disables the popup menu for the region color buttons
+	//
+	for ($i = 0; $i < 6; $i ++)
+	{
+		string $items[] = `popupMenu -q -ia ("shpUI_regionColorMenu" + $i)`;
+		for ($menu in $items)
+			menuItem -e -en $enable $menu;
+	}
+}
+
+
+global proc shapesUI_insertRegionLabelKeyword( string $label, string $placeholder )
+{
+	//
+	//	adds or insets the placeholder for the region label
+	//
+	string $name = `textField -q -tx $label`;
+	if ($name == "")
+		textField -e -tx $placeholder $label;
+	else
+		textField -e -it $placeholder $label;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// shape labels
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildLabelPrefsUI()
+{
+	//
+	// build the preferences window for the labels
+	//
+	if (`window -ex SHAPESLabelPrefsWin`)
+		deleteUI SHAPESLabelPrefsWin;
+	
+	if (`windowPref -ex SHAPESLabelPrefsWin`)
+		windowPref -r SHAPESLabelPrefsWin;
+	
+	window -t "Label Preferences" -w 230 -h 270 SHAPESLabelPrefsWin;
+	
+	string $labelTreeForm = `formLayout`;
+	treeView -nb 1 -p $labelTreeForm -h 80 -abr 0 -adr 0 -arp 0 -elc shapesUI_setLabelPrefs shpUI_labelTree;
+	string $resetButton = `button -l "Default Labels" -h 25 -c shapesUI_resetLabelPrefs`;
+	
+	formLayout	-e 
+				
+				-af shpUI_labelTree "top" 0 
+				-af shpUI_labelTree "left" 0 
+				-af shpUI_labelTree "bottom" 25 
+				-af shpUI_labelTree "right" 0 
+				-af $resetButton "left" 0 
+				-af $resetButton "right" 0 
+				-af $resetButton "bottom" 0 
+				
+				-ac $resetButton "top" 0 "shpUI_labelTree" 
+				
+				$labelTreeForm;
+	setParent ..;
+	
+	shapesUI_listUserLabels;
+	
+	showWindow SHAPESLabelPrefsWin;
+	
+	// resize the window temporarily to go around the display bug
+	window -e -w 231 -h 271 SHAPESLabelPrefsWin;
+	window -e -w 230 -h 270 SHAPESLabelPrefsWin;
+}
+
+
+global proc shapesUI_listUserLabels()
+{
+	//
+	// populate the user label list
+	//
+	global string $gShapes_rgbLabel[];
+	
+	treeView -e -ra shpUI_labelTree;
+	
+	string $labels[] = shapesUI_getUserLabelList();
+	
+	for ($c = 0; $c < size($gShapes_rgbLabel); $c ++)
+	{
+		treeView -e -ai $labels[$c] "" shpUI_labelTree;
+		string $rgb[] = stringToStringArray($gShapes_rgbLabel[$c], ",");
+		eval("treeView -e -btc \"" + $labels[$c] + "\" 1 " + $rgb[0] + " " + $rgb[1] + " " + $rgb[2] + " shpUI_labelTree");
+	}
+}
+
+
+global proc string[] shapesUI_getUserLabelList()
+{
+	//
+	// return the list of user labels
+	//
+	global string $gShapes_userLabels[];
+	
+	string $labels[] = $gShapes_userLabels;
+	if (`optionVar -ex SHAPESUserLabels`)
+	{
+		string $labelString = `optionVar -q SHAPESUserLabels`;
+		$labels = stringToStringArray($labelString, ",");
+	}
+	return $labels;
+}
+
+
+global proc string shapesUI_setLabelPrefs( string $labelName, string $newName)
+{
+	//
+	// store the user labels in an environment variable
+	//
+	string $items[] = `treeView -q -ch "" shpUI_labelTree`;
+	int $id = shapesArray_stringArrayFind($labelName, 0, $items);
+	if ($newName == "")
+		$newName = "Label" + ($id + 1);
+	$items[$id] = $newName;
+	string $labelString = stringArrayToString($items, ",");
+	optionVar -sv SHAPESUserLabels $labelString;
+	treeView -e -cs shpUI_targetTree;
+	shapesUI_buildTargetPopupMenu "clear";
+	
+	// rebuild the list to display the default labels properly;
+	// in Maya 2016 resetting the label by entering en empty string
+	// doesn't display the default label
+	evalDeferred("shapesUI_listUserLabels");
+	
+	return $newName;
+}
+
+
+global proc shapesUI_resetLabelPrefs()
+{
+	//
+	// reset the user labels
+	//
+	optionVar -rm SHAPESUserLabels;
+	shapesUI_listUserLabels;
+	treeView -e -cs shpUI_targetTree;
+	shapesUI_buildTargetPopupMenu "clear";
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// target list dependencies
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildTargetPopupMenu( string $mode )
+{
+	//
+	// build the popup menu depending on the selection
+	//
+	popupMenu -e -dai shpUI_targetPopup;
+	
+	if ($mode != "clear")
+	{
+		int $active = 0;
+		if (size(`treeView -q -si shpUI_targetTree`))
+			$active = 1;
+		menuItem -l "Focus Selected" -p "shpUI_targetPopup" -en $active -c ("shapesUI_focusOnSelectedItem 1 shpUI_targetTree \"\"");
+		menuItem -l "Deselect" -p "shpUI_targetPopup" -en $active -c ("shapesUI_clearListSelection shpUI_targetTree target");
+		menuItem -l "Order Below..." -p "shpUI_targetPopup" -en $active -c ("shapesUI_orderBelow 1");
+		
+		int $value = `optionVar -q SHAPESReverseTargetListOrder`;
+		menuItem -l "Reverse" -p "shpUI_targetPopup" -cb $value -c shapesUI_reverseTargetListOrder;
+		
+		menuItem -d 1 -p "shpUI_targetPopup";
+		menuItem -l "Solo" -p "shpUI_targetPopup" -en $active -c shapesUI_soloTargetItem;
+		
+		menuItem -d 1 -p "shpUI_targetPopup";
+		menuItem -l "Track Item" -p "shpUI_targetPopup" -en $active -c ("shapesUI_trackTargetItem 1");
+		menuItem -l "Clear Track List" -p "shpUI_targetPopup" -en $active -c ("shapesUI_trackTargetItem 0");
+	}
+	
+	if ($mode == "labels")
+	{
+		menuItem -d 1 -p "shpUI_targetPopup";
+		menuItem -l "Filter By Label" -p "shpUI_targetPopup" -c shapesUI_filterListByLabel;
+		menuItem -d 1 -p "shpUI_targetPopup";
+		menuItem -l "No Label" -p "shpUI_targetPopup" -c ("shapesUI_setTargetShapeLabel -1");
+		
+		string $labels[] = shapesUI_getUserLabelList();
+		for ($l = 0; $l < size($labels); $l ++)
+		{
+			if (!`gmatch $labels[$l] "*Label*"`)
+				menuItem -l $labels[$l] -p "shpUI_targetPopup" -i ("SHAPES_labels" + ($l + 1) + ".png")-c ("shapesUI_setTargetShapeLabel " + $l);
+		}
+		
+		menuItem -d 1 -p "shpUI_targetPopup";
+		menuItem -l "Labels..." -p "shpUI_targetPopup" -c shapesUI_buildLabelPrefsUI;
+	}
+}
+
+
+global proc shapesUI_setTargetShapeLabel( int $id )
+{
+	//
+	// set the label color for the selected shape
+	//
+	global string $gShapes_bsData[];
+	global string $gShapes_rgbLabel[];
+	
+	string $shape[] = `treeView -q -si shpUI_targetTree`;
+	
+	for ($s in $shape)
+	{
+		float $color[] = {};
+		if ($id == -1)
+			$color = {0.396, 0.396, 0.396};
+		else
+			$color = shapesArray_stringToFloatArray($gShapes_rgbLabel[$id], ",");
+		
+		treeView -e -btc $s 2 $color[0] $color[1] $color[2] shpUI_targetTree;
+		for ($i = 0; $i < size($gShapes_bsData); $i ++)
+		{
+			if (dict_getStringValue($gShapes_bsData[$i], "target") == $s)
+				dict_setValue($gShapes_bsData, $i, "label", $id);
+		}
+	}
+	shapesMain_storeNewTargetOrder {} {} {} {} {};
+}
+
+
+global proc shapesUI_filterListByLabel()
+{
+	//
+	// display only the items which match the label of the current item
+	//
+	global int $gShapes_index;
+	global string $gShapes_bsData[];
+	
+	shapesUI_clearSearch "target" 0;
+	
+	string $label = dict_getStringValue($gShapes_bsData[$gShapes_index], "label");
+	
+	string $items[] = `treeView -q -ch "" shpUI_targetTree`;
+	for ($i = 0; $i < size($items); $i ++)
+	{
+		if (dict_getStringValue($gShapes_bsData[$i], "label") == $label)
+		{
+			treeView -e -iv $items[$i] 1 shpUI_targetTree;
+			shapesUI_expandParentItem $items[$i];
+		}
+		else
+			treeView -e -iv $items[$i] 0 shpUI_targetTree;
+	}
+}
+
+
+global proc shapesUI_filterListByValue( float $val, int $live )
+{
+	//
+	// display only the items which match the selected value range
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_bsData[];
+	
+	string $items[] = `treeView -q -ch "" shpUI_targetTree`;
+	if (!$live)
+	{
+		if (!size($items) || $items[0] == "No shapes")
+		{
+			shapesUI_resetFilterCheckBox 0;
+			return;
+		}
+		
+		shapesUI_clearSearch "target" 1;
+		
+		// toggle the filter buttons
+		if ($val == 1)
+			iconTextCheckBox -e -v 0 shpUI_filterActiveCheck;
+		else
+			iconTextCheckBox -e -v 0 shpUI_filterMaxCheck;
+	}
+	
+	for ($i = 0; $i < size($items); $i ++)
+	{
+		// compensate for the case where a target which is currently filtered has just been deleted
+		if (`attributeQuery -n $gShapes_bsNode -ex $items[$i]` || dict_getBoolValue($gShapes_bsData[$i], "set"))
+		{
+			float $shapeVal;
+			if (!dict_getBoolValue($gShapes_bsData[$i], "set"))
+				$shapeVal = `getAttr ($gShapes_bsNode + "." + $items[$i])`;
+			else
+				$shapeVal = `getAttr ($items[$i] + ".value")`;
+			if ($shapeVal >= $val || $shapeVal < 0)
+			{
+				float $color[] = {0.20, 0.75, 0.0};
+				if ($shapeVal < 1 && $shapeVal > 0)
+					$color = {1.0, 0.86, 0.3};
+				else if ($shapeVal > 1)
+					$color = {1.0, 0.26, 0.26};
+				else if ($shapeVal < 0)
+					$color = {0.15, 0.5, 1.0};
+				treeView	-e 
+							-iv $items[$i] 1 
+							-ornament $items[$i] 1 0 4 
+							-orc $items[$i] $color[0] $color[1] $color[2] 
+							shpUI_targetTree;
+				if (!$live)
+					shapesUI_expandParentItem $items[$i];
+			}
+			else
+			{
+				if ($live)
+				{
+					// when in live mode remove the ornament if an item is inactive
+					if ($shapeVal == 0)
+						treeView -e -ornament $items[$i] 0 0 0 shpUI_targetTree;
+				}
+				// when not in live mode (user filtered) hide the inactive item
+				else
+					treeView -e -iv $items[$i] 0 shpUI_targetTree;
+			}
+			
+			// make sure that only the items corresponding to the current display type are shown;
+			// easier to do it at the end
+			if ((`iconTextButton -q -i shpUI_filterTypeButton` == "SHAPES_filterTypeShapes.png" && dict_getBoolValue($gShapes_bsData[$i], "set")) || 
+				(`iconTextButton -q -i shpUI_filterTypeButton` == "SHAPES_filterTypeSets.png" && `attributeQuery -n $gShapes_bsNode -ex $items[$i]`))
+				treeView -e -iv $items[$i] 0 shpUI_targetTree;
+		}
+	}
+}
+
+
+global proc shapesUI_filterListByType( int $type, int $clear )
+{
+	//
+	// display both shapes and sets or only shapes or only sets
+	//
+	global string $gShapes_bsData[];
+	
+	// clearing can be ignored when called after clearing the list
+	// to display only the items of the specified type
+	if ($clear)
+		shapesUI_clearSearch "target" 0;
+	
+	if ($type == 1)
+	{
+		iconTextButton -e -i "SHAPES_filterTypeAll.png" shpUI_filterTypeButton;
+		return;
+	}
+	
+	int $displaySets;
+	if ($type == 3)
+	{
+		$displaySets = 1;
+		iconTextButton -e -i "SHAPES_filterTypeSets.png" shpUI_filterTypeButton;
+	}
+	else
+		iconTextButton -e -i "SHAPES_filterTypeShapes.png" shpUI_filterTypeButton;
+	
+	string $items[] = `treeView -q -ch "" shpUI_targetTree`;
+	if (!size($items))
+		return;
+	
+	for ($i = 0; $i < size($items); $i ++)
+	{
+		if (dict_getBoolValue($gShapes_bsData[$i], "set") == $displaySets)
+		{
+			treeView -e -iv $items[$i] 1 shpUI_targetTree;
+			shapesUI_expandParentItem $items[$i];
+		}
+		else
+			treeView -e -iv $items[$i] 0 shpUI_targetTree;
+	}
+}
+
+
+global proc shapesUI_resetFilterCheckBox( int $live )
+{
+	//
+	// resets the check box buttons for value filtering
+	//
+	if ($live)
+		iconTextCheckBox -e -v 0 shpUI_filterLiveCheck;
+	iconTextCheckBox -e -v 0 shpUI_filterActiveCheck;
+	iconTextCheckBox -e -v 0 shpUI_filterMaxCheck;
+}
+
+
+global proc shapesUI_expandParentItem( string $item )
+{
+	//
+	// expands the parent item when the list is filtered
+	//
+	string $parent = `treeView -q -ip $item shpUI_targetTree`;
+	if ($parent != "")
+		treeView -e -ei $parent 1 shpUI_targetTree;
+}
+
+
+global proc shapesUI_orderBelow( int $init )
+{
+	//
+	// allows to reorder an item by clicking the target item it should be ordered after
+	//
+	global string $gShapes_selectedTarget;
+	global string $gShapes_orderBelowList[];
+	
+	if ($init)
+	{
+		print ("// Select the target where " + $gShapes_selectedTarget + " should appear below //\n");
+		$gShapes_orderBelowList[size($gShapes_orderBelowList)] = $gShapes_selectedTarget;
+	}
+	else
+	{
+		shapesMain_autoOrderNewTarget $gShapes_orderBelowList[0] $gShapes_orderBelowList[1] 0 0;
+		shapesMain_listBlendShapeTargets 1;
+		treeView -e -si $gShapes_orderBelowList[0] 1 shpUI_targetTree;
+		clear $gShapes_orderBelowList;
+		shapesMain_buildTargetSlider;
+		print "\n";
+	}
+}
+
+
+global proc shapesUI_reverseTargetListOrder()
+{
+	//
+	// called when the checkbox changes for allowing to reorder the target list
+	//
+	int $value = 1 - `optionVar -q SHAPESAllowTargetReorder`;
+	treeView -e -rto $value shpUI_targetTree;
+	optionVar -iv SHAPESAllowTargetReorder $value;
+}
+
+
+global proc int shapesUI_focusOnSelectedItem( int $fromMenu, string $list, string $item )
+{
+	//
+	// scroll the treeView to the selected item
+	//
+	global string $gShapes_selectedTarget;
+	
+	if ($fromMenu)
+		$item = $gShapes_selectedTarget;
+	
+	if ($item != "" && `treeView -q -iex $item $list`)
+	{
+		treeView -e -cs $list;
+		refresh;
+		treeView -e -si $item 1 $list;
+		treeView -e -shi $item $list;
+	}
+	else
+		return 0;
+	
+	return 1;
+}
+
+
+global proc shapesUI_clearListSelection( string $list, string $type )
+{
+	//
+	// deselect any item in the treeView
+	//
+	treeView -e -cs $list;
+	if ($type == "target")
+		shapesMain_buildTargetSlider;
+}
+
+
+global proc shapesUI_trackTargetItem( int $add )
+{
+	//
+	// accumulates a list of selected items
+	// or clears it
+	//
+	global string $gShapes_targetTrackList[];
+	
+	if ($add)
+	{
+		string $sel[] = `treeView -q -si shpUI_targetTree`;
+		if (size($sel))
+		{
+			for ($s in $sel)
+				$gShapes_targetTrackList[size($gShapes_targetTrackList)] = $s;
+		}
+	}
+	else
+		$gShapes_targetTrackList = {};
+}
+
+
+global proc shapesUI_soloTargetItem()
+{
+	//
+	// enters or leaves solo mode for the selected item
+	//
+	global string $gShapes_bsData[];
+	
+	string $sel[] = `treeView -q -si shpUI_targetTree`;
+	if (!size($sel))
+		return;
+	
+	string $item = $sel[0];
+	for ($i = 0; $i < size($gShapes_bsData); $i ++)
+	{
+		string $shape = dict_getStringValue($gShapes_bsData[$i], "target");
+		string $queryPlug = shapesMain_getQueryPlug($shape);
+		string $conn[] = shapesMain_verifyShapeConnections($queryPlug, 0);
+		string $connItems[] = dict_stringToCleanArray($conn[0], "%");
+		if ($shape == $item && $connItems[0] == "")
+			setAttr $queryPlug 1;
+		else
+		{
+			if (!`getAttr -l $queryPlug`)
+			{
+				if (!size(`listConnections -s 1 -d 0 $queryPlug`))
+					setAttr $queryPlug 0;
+			}
+		}
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// ui actions
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_toggleSymmetryCheck( int $state )
+{
+	//
+	// toggle actions when switching the symmetry check on and off
+	//
+	string $symImage = "SHAPES_symmetryCheck.png";
+	if (!$state)
+		$symImage = "SHAPES_symmetryCheckOff.png";
+	
+	iconTextButton -e -i $symImage shpUI_symmetryCheckButton;
+	optionVar -iv SHAPESSymmetryCheck $state;
+	if ($state)
+		shapesUI_performSymmetryCheck "";
+}
+
+
+global proc int shapesUI_performSymmetryCheck( string $mesh )
+{
+	//
+	// perform the symmetry check when toggling the check button or loading the mesh
+	//
+	global string $gShapes_skinMesh;
+	
+	int $result;
+	
+	// check for symmetry when the mesh is loaded
+	if ($mesh != "" && `optionVar -q SHAPESSymmetryCheck`)
+	{
+		int $axisValue = `optionVar -q SHAPESMirrorAxis`;
+		int $dirValue = `optionVar -q SHAPESMirrorDirection`;
+		string $axis = "x";
+		if ($axisValue == 2)
+			$axis = "y";
+		else if ($axisValue == 3)
+			$axis = "z";
+		
+		$result = `br_polyMakeSymmetrical -ax $axis -dir $dirValue $mesh`;
+		if (!$result)
+		{
+			string $msg = "The mesh is not symmetrical. Do you want to attempt to restore symmetry?";
+			if (shapesGlobal_confirmWindow($msg, "OK"))
+			{
+				$result = `br_polyMakeSymmetrical -a 1 -ax $axis -dir $dirValue $mesh`;
+				if (!$result)
+				{
+					confirmDialog	-t "SHAPES" 
+									-m "Restoring the symmetry failed. Please check the mesh manually." 
+									-b "OK";
+					undo;
+					optionVar -iv SHAPESOrderBasedMirror 1;
+				}
+				else
+					select -r $mesh;
+			}
+		}
+	}
+	else
+	{
+		if ($gShapes_skinMesh != "" && `objExists $gShapes_skinMesh`)
+			$result = shapesUI_performSymmetryCheck(shapesMain_getIntermediateShape($gShapes_skinMesh));
+	}
+	
+	if (`floatSliderGrp -ex shpUI_mirrorToleranceSlider`)
+		floatSliderGrp -e -v `optionVar -q SHAPESMirrorToleranceValue` shpUI_mirrorToleranceSlider;
+	
+	return $result;
+}
+
+
+global proc shapesUI_addShapeHelperAttribute( int $group, string $name )
+{
+	//
+	// add a custom attribute
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_selectedTarget;
+	
+	if ($gShapes_bsNode == "None")
+		return;
+	
+	string $attrList[] = `listAttr -s -k -ud $gShapes_bsNode`;
+	int $index = -1;
+	if (!size($attrList))
+		$index = 1;
+	else
+	{
+		for ($i = 0; $i < size($attrList); $i ++)
+		{
+			if (!`attributeQuery -n $gShapes_bsNode -ex ($name + ($i + 1))` && $index == -1)
+				$index = $i + 1;
+		}
+	}
+	if ($index == -1)
+		$index = size($attrList) + 1;
+	addAttr -ln ($name + $index) -k 1 $gShapes_bsNode;
+	setAttr -l $group ($gShapes_bsNode + "." + $name + $index);
+	shapesMain_autoOrderNewTarget ($name + $index) $gShapes_selectedTarget 1 0;
+	shapesMain_listBlendShapeTargets 1;
+}
+
+
+global proc shapesUI_createAttributeOnNodeUI()
+{
+	//
+	// opens the window for setting the range values for the attributes to create
+	//
+	int $pair;
+	string $shapes[] = `treeView -q -si shpUI_targetTree`;
+	if (size($shapes) == 2)
+	{
+		if (shapesMirror_swapSideLabel($shapes[0]) == $shapes[1])
+			$pair = 1;
+	}
+	
+	if (`window -ex SHAPESChannelToAttributeWin`)
+		deleteUI SHAPESChannelToAttributeWin;
+	
+	if (`windowPref -ex SHAPESChannelToAttributeWin`)
+		windowPref -r SHAPESChannelToAttributeWin;
+	
+	window -t "Set Attribute Range" -w 230 -h 131 SHAPESChannelToAttributeWin;
+	
+	frameLayout -lv 0 -mw 5 -mh 5;
+		columnLayout -adj 1;
+			floatFieldGrp -l "Attribute Min/Max Value" -cw3 160 50 50 -ct3 "right" "both" "right" -co3 10 0 2 -nf 2 -v1 0 -v2 1 shpUI_attrRangeField;
+			floatFieldGrp -l "Shape Min/Max Value" -cw3 160 50 50 -ct3 "right" "both" "right" -co3 10 0 2 -nf 2 -v1 0 -v2 1 shpUI_shapeRangeField;
+			separator -style "none" -h 5;
+			checkBoxGrp -l "Limit To Range" -cw2 161 50 -ct2 "right" "both" -co2 10 0 shpUI_limitAttrRange;
+			separator -style "none" -h 5;
+			checkBoxGrp -l "Pair" -cw2 161 50 -ct2 "right" "both" -co2 10 0 -en $pair -cc shapesUI_toggleAttributeOnNodePairOptions shpUI_pairAttributes;
+			separator -style "none" -h 10;
+			button -l "Add Attributes" -h 30 -c shapesUI_createAttributeOnNode;
+		setParent ..;
+	setParent ..;
+	
+	showWindow SHAPESChannelToAttributeWin;
+}
+
+
+global proc shapesUI_toggleAttributeOnNodePairOptions()
+{
+	//
+	// toggles the attributes settings
+	// depending on the pair setting
+	//
+	if (`checkBoxGrp -q -v1 shpUI_pairAttributes`)
+	{
+		floatFieldGrp -e -v1 -1 -v2 1 -en 0 shpUI_attrRangeField;
+		floatFieldGrp -e -v1 0 -v2 1 -en 0 shpUI_shapeRangeField;
+		checkBoxGrp -e -v1 1 -en 0 shpUI_limitAttrRange;
+	}
+	else
+	{
+		floatFieldGrp -e -v1 0 -v2 1 -en 1 shpUI_attrRangeField;
+		floatFieldGrp -e -v1 0 -v2 1 -en 1 shpUI_shapeRangeField;
+		checkBoxGrp -e -v1 0 -en 1 shpUI_limitAttrRange;
+	}
+}
+
+
+global proc shapesUI_createAttributeOnNode()
+{
+	//
+	// creates an attribute for each selected target channel
+	// on the selected node in the scene
+	//
+	string $sel[] = `ls -sl`;
+	if (!size($sel))
+		error "No node selected to add attributes to";
+	string $node = $sel[0];
+	
+	string $attributes[] = `listAttr $node`;
+	string $shapes[] = `treeView -q -si shpUI_targetTree`;
+	
+	int $pair = `checkBoxGrp -q -v1 shpUI_pairAttributes`;
+	string $pairAttr;
+	
+	// check if any of the selected shapes already exists as an attribute on the selected node
+	int $addList[];
+	if (!$pair)
+	{
+		for ($shape in $shapes)
+		{
+			int $add = 1;
+			for ($attr in $attributes)
+			{
+				if ($shape == $attr)
+					$add = 0;
+			}
+			$addList[size($addList)] = $add;
+		}
+	}
+	else
+	{
+		// create a combined attribute name
+		// if both shape names are equal in length strip out the side identifier
+		// and the result will be the attribute name
+		// if both names are not equal in length simply combine them
+		if (size($shapes[0]) == size($shapes[1]))
+		{
+			string $letterArray[];
+			for ($x = 1; $x < size($shapes[0] + 1); $x ++)
+			{
+				if (substring($shapes[0], $x, $x) == substring($shapes[1], $x, $x))
+					$letterArray[size($letterArray)] = substring($shapes[0], $x, $x);
+			}
+			$pairAttr = stringArrayToString($letterArray, "");
+		}
+		else
+			$pairAttr = $shapes[0] + "_" + $shapes[1];
+		
+		if (`attributeQuery -n $node -ex $pairAttr`)
+			$addList[size($addList)] = 0;
+		else
+			$addList[size($addList)] = 1;
+	}
+	
+	float $attrMin = `floatFieldGrp -q -v1 shpUI_attrRangeField`;
+	float $attrMax = `floatFieldGrp -q -v2 shpUI_attrRangeField`;
+	float $shapeMin = `floatFieldGrp -q -v1 shpUI_shapeRangeField`;
+	float $shapeMax = `floatFieldGrp -q -v2 shpUI_shapeRangeField`;
+	
+	int $sdk;
+	if ($attrMin != $shapeMin || $attrMax != $shapeMax)
+		$sdk = 1;
+	
+	int $counter = 0;
+	int $pairCount = 1;
+	
+	for ($shape in $shapes)
+	{
+		// check if a shape is already controlled by a combo
+		string $comboDictList[] = shapesCombo_getComboNodes($shape);
+		
+		string $drivenNode;
+		string $drivenAttr;
+		int $listItem = -1;
+		
+		for ($i = 0; $i < size($comboDictList); $i ++)
+		{
+			if (dict_getStringValue($comboDictList[$i], "target") == $shape && $listItem == -1)
+				$listItem = $i;
+		}
+		if ($listItem != -1)
+		{
+			// if there is a combo connection check if the master combo node
+			// has already a driver connection in case of driver based combos
+			// the driver would be connected to the second x input
+			// in case of an already connected driver skip this shape and log it
+			string $multNodes[] = dict_getValueArray($comboDictList[$listItem], "comboNodes");
+			string $plug[] = `listConnections -p 1 ($multNodes[0] + ".i2x")`;
+			if (size($plug))
+			{
+				$drivenNode = "";
+				$drivenAttr = "";
+			}
+			else
+			{
+				$drivenNode = $multNodes[0];
+				$drivenAttr = "i2x";
+			}
+		}
+		else
+		{
+			string $queryPlug = shapesMain_getQueryPlug($shape);
+			string $plugItems[] = stringToStringArray($queryPlug, ".");
+			$drivenNode = $plugItems[0];
+			$drivenAttr = $plugItems[1];
+		}
+		
+		if ($drivenNode != "")
+		{
+			if ($pair)
+			{
+				$shape = $pairAttr;
+				if ($pairCount == 1)
+				{
+					$attrMin = 0;
+					$attrMax = 1;
+				}
+				else
+				{
+					$attrMin = 0;
+					$attrMax = -1;
+				}
+			}
+			
+			if (($pair && size($addList) == $counter + 1) || (!$pair && $addList[$counter]))
+			{
+				if (!`checkBoxGrp -q -v1 shpUI_limitAttrRange`)
+					addAttr -ln $shape -k 1 $node;
+				else
+				{
+					if (!$pair)
+						addAttr -ln $shape -k 1 -min $attrMin -max $attrMax $node;
+					else
+						addAttr -ln $shape -k 1 -min -1 -max 1 $node;
+				}
+			}
+			
+			if ($sdk)
+			{
+				setDrivenKeyframe -dv $attrMin -v $shapeMin -itt "spline" -ott "spline" -cd ($node + "." + $shape) ($drivenNode + "." + $drivenAttr);
+				setDrivenKeyframe -dv $attrMax -v $shapeMax -itt "spline" -ott "spline" -cd ($node + "." + $shape) ($drivenNode + "." + $drivenAttr);
+				
+				if (!$pair)
+				{
+					setAttr ($drivenNode + "_" + $drivenAttr + ".preInfinity") 1;
+					setAttr ($drivenNode + "_" + $drivenAttr + ".postInfinity") 1;
+				}
+			}
+			else
+				connectAttr -f ($node + "." + $shape) ($drivenNode + "." + $drivenAttr);
+		}
+		else
+			warning ("\"" + $node + "." + $shape + "\" could not be connected because the target is already driven");
+		
+		$counter ++;
+		$pairCount ++;
+	}
+	
+	// add the new control to the driver list
+	shapesMain_storeCustomDriver "" 0;
+	// refresh the target list
+	shapesMain_refreshTargetItem $shapes;
+	
+	deleteUI SHAPESChannelToAttributeWin;
+}
+
+
+global proc shapesUI_resizeScrollList( int $dir, string $list )
+{
+	//
+	// resize the target scroll list
+	//
+	int $tree = 1;
+	string $treeItem;
+	string $var;
+	
+	if ($list == "target")
+	{
+		$treeItem = "shpUI_targetTree";
+		$var = "SHAPESTargetTreeSize";
+	}
+	else if ($list == "joint")
+	{
+		$treeItem = "shpUI_driverTree";
+		$var = "SHAPESDriverTreeSize";
+	}
+	else if ($list == "weight")
+	{
+		$treeItem = "shpUI_shapeWeightsList";
+		$tree = 0;
+		$var = "SHAPESWeightTreeSize";
+	}
+	else if ($list == "region")
+	{
+		$treeItem = "shpUI_regionList";
+		$tree = 0;
+		$var = "SHAPESRegionTreeSize";
+	}
+	else
+		return;
+	
+	float $height;
+	if ($tree)
+		$height = `treeView -q -h $treeItem`;
+	else
+		$height = `textScrollList -q -h $treeItem`;
+	
+	if ($dir == 1)
+		$height += 20;
+	else
+		$height -= 20;
+	if ($height <= 20 && $dir == 0)
+		$height = 20;
+	
+	if ($tree)
+		treeView -e -h $height $treeItem;
+	else
+		textScrollList -e -h $height $treeItem;
+	
+	optionVar -iv $var $height;
+}
+
+
+global proc shapesUI_limitFloatField( string $field )
+{
+	//
+	// limit the user input to a specific range
+	//
+	if ($field == "angle")
+	{
+		float $value = `floatFieldGrp -q -v1 shpUI_rangeField`;
+		if ($value < -180)
+			$value = -180;
+		else if ($value > 180)
+			$value = 180;
+		else if ($value == 0)
+			$value = 45;
+		floatFieldGrp -e -v1 $value shpUI_rangeField;
+		shapesDriver_setShapeDriverAttribute "shpUI_rangeField" $field;
+	}
+	else if ($field == "centerAngle")
+	{
+		float $value = `floatFieldGrp -q -v1 shpUI_centerField`;
+		if ($value < 0)
+			$value = 0;
+		else if ($value > 180)
+			$value = 45;
+		floatFieldGrp -e -v1 $value shpUI_centerField;
+		shapesDriver_setShapeDriverAttribute "shpUI_centerField" $field;
+	}
+	else if ($field == "twistAngle")
+	{
+		float $value = `floatFieldGrp -q -v1 shpUI_twistAngleField`;
+		if ($value < 0.01)
+			$value = 0.01;
+		else if ($value > 180)
+			$value = 180;
+		floatFieldGrp -e -v1 $value shpUI_twistAngleField;
+		shapesDriver_setShapeDriverAttribute "shpUI_twistAngleField" $field;
+	}
+	else if ($field == "translateMin")
+	{
+		float $value = `floatFieldGrp -q -v1 shpUI_distanceMinField`;
+		if ($value < 0)
+			$value = 0;
+		floatFieldGrp -e -v1 $value shpUI_distanceMinField;
+		shapesDriver_setShapeDriverAttribute "shpUI_distanceMinField" $field;
+	}
+	else if ($field == "translateMax")
+	{
+		float $value = `floatFieldGrp -q -v1 shpUI_distanceMaxField`;
+		if ($value < 0)
+			$value = 0;
+		floatFieldGrp -e -v1 $value shpUI_distanceMaxField;
+		shapesDriver_setShapeDriverAttribute "shpUI_distanceMaxField" $field;
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// set hokeys
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_setupHotkeyUI( string $tool )
+{
+	//
+	// open the window for defining the hotkeys
+	//
+	
+	string $win = "SHAPESHotkeyWindow";
+	if (`window -ex $win`)
+		deleteUI $win;
+	
+	if (`windowPref -ex $win`)
+		windowPref -r $win;
+	
+	string $title;
+	string $descr;
+	if ($tool == "brush")
+	{
+		$title = "SHAPES Brush";
+		$descr = "Enter the hotkey\nfor the marking menu";
+	}
+	else if ($tool == "compare")
+	{
+		$title = "Sculpt Compare";
+		$descr = "Enter the hotkey for\nthe sculpt compare tool";
+	}
+	
+	window -t $title -wh 206 154 $win;
+	
+	int $state;
+	if (`shapesGlobal_getMayaVersion` >= 2016)
+		$state = 1;
+	
+	rowColumnLayout;
+		separator -st "none" -h 10;
+		text -l $descr -al "center";
+		shapesUI_createHotkeySetOption;
+		separator -st "none" -h 10;
+		textFieldGrp -l "Key" -cw2 30 100 -ct2 "right" "left" -co2 0 5 shpUI_hotkeyField;
+		rowLayout -nc 3;
+			checkBoxGrp -l "Shift" -cw2 30 20 -ct2 "right" "left" -co2 0 5 -m $state shpUI_shiftCheck;
+			checkBoxGrp -l "Ctrl" -cw2 30 20 -ct2 "right" "left" -co2 0 5 -m $state shpUI_ctrlCheck;
+			checkBoxGrp -l "Alt" -cw2 25 20 -ct2 "right" "left" -co2 0 5 -m $state shpUI_altCheck;
+		setParent ..;
+		separator -st "none" -h 10;
+		rowLayout -nc 2;
+			button -l "OK" -w 100 -c ("shapesUI_performCreateHotkey " + $tool);
+			button -l "Cancel" -w 100 -c ("deleteUI " + $win);
+		setParent ..;
+	setParent ..;
+	
+	showWindow $win;
+}
+
+
+global proc shapesUI_createHotkeySetOption()
+{
+	//
+	// add an option menu for selecting the hotkey set
+	// to add the hotkey to
+	//
+	if (`shapesGlobal_getMayaVersion` < 2016)
+		return;
+	
+	string $keySets[] = `hotkeySet -q -hsa`;
+	int $default = -1;
+	for ($i = 0; $i < size($keySets); $i ++)
+	{
+		if ($keySets[$i] == "Maya_Default")
+			$default = $i;
+	}
+	if ($default != -1)
+		stringArrayRemoveAtIndex($default, $keySets);
+	
+	separator -st "none" -h 10;
+	optionMenuGrp -l "Set" -cw2 30 100 -ct2 "right" "left" -co2 0 5 shpUI_hotkeySetOption;
+	menuItem -l "Create New";
+	for ($ks in $keySets)
+		menuItem -l $ks;
+}
+
+
+global proc shapesUI_performCreateHotkey( string $tool )
+{
+	//
+	// set up the hotkey
+	//
+	string $win = "SHAPESHotkeyWindow";
+	
+	if (`shapesGlobal_getMayaVersion` >= 2016)
+	{
+		string $keySet = `optionMenuGrp -q -v shpUI_hotkeySetOption`;
+		if ($keySet == "Create New")
+		{
+			if (`hotkeySet -q -ex Maya_Default_SHAPES`)
+				hotkeySet -e -del Maya_Default_SHAPES;
+			hotkeySet -cu Maya_Default_SHAPES;
+		}
+		else
+			hotkeySet -e -cu $keySet;
+	}
+	
+	string $keyString = `textFieldGrp -q -tx shpUI_hotkeyField`;
+	int $shiftMod = `checkBoxGrp -q -v1 shpUI_shiftCheck`;
+	int $ctrlMod = `checkBoxGrp -q -v1 shpUI_ctrlCheck`;
+	int $altMod = `checkBoxGrp -q -v1 shpUI_altCheck`;
+	
+	string $upCmd;
+	string $downCmd;
+	string $cmdString1;
+	string $cmdString2;
+	string $runAnn1;
+	string $runAnn2;
+	string $nameAnn1;
+	string $nameAnn2;
+	
+	if ($tool == "brush")
+	{
+		$upCmd = "SHAPESBrushMMCommand";
+		$downCmd = "SHAPESBrushMMPopDownCommand";
+		$cmdString1 = "SHAPESBrushDefaultTool; SHAPESBrushBuildMM;";
+		$cmdString2 = "MarkingMenuPopDown";
+		$runAnn1 = "Open the SHAPES Brush marking menu";
+		$runAnn2 = "Close the SHAPES Brush marking menu";
+		$nameAnn1 = "SHAPESBrushMM";
+		$nameAnn2 = "SHAPESBrushMMPopDown";
+	}
+	else if ($tool == "compare")
+	{
+		$upCmd = "SHAPESCompareDraggerToolPressCommand";
+		$downCmd = "SHAPESCompareDraggerToolReleaseCommand";
+		$cmdString1 = "if (`contextInfo -ex SHAPESCompareDraggerToolContext1`) deleteUI SHAPESCompareDraggerToolContext1; global string $SHAPESLastToolBeforeCompare; $SHAPESLastToolBeforeCompare = `currentCtx`; SHAPESCompareDraggerToolContext; setToolTo SHAPESCompareDraggerToolContext1;";
+		$cmdString2 = "if (`contextInfo -ex SHAPESCompareDraggerToolContext1`) deleteUI SHAPESCompareDraggerToolContext1; if ($SHAPESLastToolBeforeCompare != \"\") setToolTo $SHAPESLastToolBeforeCompare; else setToolTo $gSelect;";
+		$runAnn1 = "Activate the SHAPES compare dragger tool";
+		$runAnn2 = "Deactivate the SHAPES compare dragger tool";
+		$nameAnn1 = "SHAPESCompareDraggerToolPress";
+		$nameAnn2 = "SHAPESCompareDraggerToolRelease";
+	}
+	
+	if (`runTimeCommand -q -ex $upCmd`)
+		runTimeCommand -e -del $upCmd;
+	if (`runTimeCommand -q -ex $downCmd`)
+		runTimeCommand -e -del $downCmd;
+	
+	runTimeCommand -annotation $runAnn1 -category "User" -command $cmdString1 $upCmd;
+	runTimeCommand -annotation $runAnn2 -category "User" -command $cmdString2 $downCmd;
+	
+	nameCommand -ann $nameAnn1 -c $upCmd ($nameAnn1 + "_NameCommand");
+	nameCommand -ann $nameAnn2 -c $downCmd ($nameAnn2 + "_NameCommand");
+	
+	string $cmd = "hotkey -k \"" + $keyString + "\"";
+	if ($shiftMod && `shapesGlobal_getMayaVersion` >= 2016)
+		$cmd += " -sht";
+	if ($ctrlMod)
+		$cmd += " -ctl";
+	if ($altMod)
+		$cmd += " -alt";
+	string $cmdRelease = $cmd + " -releaseName (\"" + $nameAnn2 + "_NameCommand" + "\")";
+	$cmd += " -name (\"" + $nameAnn1 + "_NameCommand" + "\")";
+	eval($cmd);
+	eval($cmdRelease);
+	
+	shapesUI_getHotkey $tool 1;
+	shapesUI_updateHotkeyInfo $tool;
+	
+	deleteUI $win;
+}
+
+
+global proc shapesUI_deleteHotkey( string $tool )
+{
+	//
+	// remove the hotkey for the given tool
+	//
+	string $cmdName;
+	string $command;
+	string $downCmd;
+	string $var;
+	
+	if ($tool == "brush")
+	{
+		$cmdName = "SHAPESBrushMM";
+		$command = $cmdName + "Command";
+		$downCmd = "SHAPESBrushMMPopDownCommand";
+		$var = "SHAPESBrushHotkey";
+	}
+	else if ($tool == "compare")
+	{
+		$cmdName = "SHAPESCompareDraggerToolPress";
+		$command = $cmdName + "Command";
+		$downCmd = "SHAPESCompareDraggerToolReleaseCommand";
+		$var = "SHAPESCompareDraggerToolHotkey";
+	}
+	
+	if (`runTimeCommand -ex $command`)
+	{
+		int $count = `assignCommand -q -num`;
+		for ($c = 1; $c < $count + 1; $c ++)
+		{
+			string $name = `assignCommand -q -c $c`;
+			if (`gmatch $name ("*" + $cmdName + "*")`)
+			{
+				string $keyArray[] = `assignCommand -q -keyArray $c`;
+				hotkey -k $keyArray[0] -name "";
+				hotkey -k $keyArray[0] -releaseName "";
+			}
+			string $cmd = `assignCommand -q -n $c`;
+			if (`gmatch $cmd ("*" + $cmdName + "*")`)
+			{
+				assignCommand -e -d $c;
+			}
+		}
+		
+		runTimeCommand -e -del $command;
+		runTimeCommand -e -del $downCmd;
+		
+		optionVar -rm $var;
+	}
+	
+	shapesUI_updateHotkeyInfo $tool;
+}
+
+
+global proc string shapesUI_getHotkey( string $tool, int $forceUpdate )
+{
+	//
+	// return the hotkey for the given tool
+	// and save it to an environment variable if the force flag is set
+	//
+	string $cmdName;
+	string $command;
+	string $var;
+	if ($tool == "brush")
+	{
+		$cmdName = "SHAPESBrushMM";
+		$command = $cmdName + "Command";
+		$var = "SHAPESBrushHotkey";
+	}
+	else if ($tool == "compare")
+	{
+		$cmdName = "SHAPESCompareDraggerToolPress";
+		$command = $cmdName + "Command";
+		$var = "SHAPESCompareDraggerToolHotkey";
+	}
+	
+	if (!`runTimeCommand -q -ex $command`)
+		return "";
+	
+	if (`optionVar -ex $var` && !$forceUpdate)
+	{
+		string $value = `optionVar -q $var`;
+		if ($value != "" && $value != "NONE")
+			return $value;
+	}
+	
+	string $keyList[];
+	int $count = `assignCommand -q -num`;
+	for ($c = 1; $c < $count + 1; $c ++)
+	{
+		string $name = `assignCommand -q -n $c`;
+		if ($name == $cmdName + "_NameCommand")
+		{
+			$keyList = `assignCommand -q -k $c`;
+			optionVar -sv $var $keyList[0];
+		}
+	}
+	return $keyList[0];
+}
+
+
+global proc shapesUI_updateHotkeyInfo( string $tool )
+{
+	//
+	// diplays the current jotkey in the preferences
+	//
+	
+	if (!`window -ex SHAPESPrefsWin`)
+		return;
+	
+	string $label;
+	string $control;
+	if ($tool == "brush")
+	{
+		$label = shapesUI_getHotkey("brush", 0);
+		$control = "shpUI_currentBrushHotkeyLabel";
+	}
+	else if ($tool == "compare")
+	{
+		$label = shapesUI_getHotkey("compare", 0);
+		$control = "shpUI_currentCompareHotkeyLabel";
+	}
+	if ($label == "")
+		$label = "None";
+	
+	text -e -l ("Current: " + $label) $control;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// mirror identifiers
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_toggleMirrorItemLabel( int $state )
+{
+	//
+	// toggle the label for the mirror direction
+	//
+	string $labelString = "Mirror Direction (positive to negative)";
+	if (!$state)
+		$labelString = "Mirror Direction (negative to positive)";
+	optionVar -iv SHAPESMirrorDirection $state;
+	text -e -l $labelString shpUI_mirrorDirectionLabel;
+}
+
+
+global proc shapesUI_listUserIdentifier()
+{
+	//
+	// populate the fields with the user identifier
+	//
+	string $identifier[] = shapesUI_getUserIdentifierList();
+	textFieldGrp -e -tx $identifier[0] shpUI_mirrorIdentFieldL;
+	textFieldGrp -e -tx $identifier[1] shpUI_mirrorIdentFieldR;
+}
+
+
+global proc string[] shapesUI_getUserIdentifierList()
+{
+	//
+	// return the list of user identifier
+	//
+	global string $gShapes_left[];
+	global string $gShapes_right[];
+	
+	string $left = stringArrayToString($gShapes_left, ", ");
+	string $right = stringArrayToString($gShapes_right, ", ");
+	if (`optionVar -ex SHAPESUserIdentifierL`)
+	{
+		string $leftString = `optionVar -q SHAPESUserIdentifierL`;
+		$left = substituteAllString($leftString, ",", ", ");
+	}
+	if (`optionVar -ex SHAPESUserIdentifierR`)
+	{
+		string $rightString = `optionVar -q SHAPESUserIdentifierR`;
+		$right = substituteAllString($rightString, ",", ", ");
+	}
+	return {$left, $right};
+}
+
+
+global proc shapesUI_setIdentifierPrefs()
+{
+	//
+	// store the user identifier in the environment variables
+	//
+	string $left = `textFieldGrp -q -tx shpUI_mirrorIdentFieldL`;
+	string $right = `textFieldGrp -q -tx shpUI_mirrorIdentFieldR`;
+	$left = substituteAllString($left, " ", "");
+	$right = substituteAllString($right, " ", "");
+	optionVar -sv SHAPESUserIdentifierL $left;
+	optionVar -sv SHAPESUserIdentifierR $right;
+	
+	shapesUI_listUserIdentifier;
+}
+
+
+global proc shapesUI_resetIdentifierPrefs()
+{
+	//
+	// reset the user identifier
+	//
+	optionVar -rm SHAPESUserIdentifierL;
+	optionVar -rm SHAPESUserIdentifierR;
+	
+	shapesUI_listUserIdentifier;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// region labels
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_listUserRegionLabels()
+{
+	//
+	// populate the fields with the user labels
+	//
+	string $labels = shapesUI_getUserRegionLabels();
+	textFieldGrp -e -tx $labels shpUI_regionLabelsField;
+}
+
+
+global proc string shapesUI_getUserRegionLabels()
+{
+	//
+	// return the list of user labels
+	//
+	global string $gShapes_regionLabels[];
+	
+	string $labels = stringArrayToString($gShapes_regionLabels, ", ");
+	if (`optionVar -ex SHAPESUserRegionLabels`)
+	{
+		string $labelString = `optionVar -q SHAPESUserRegionLabels`;
+		$labels = substituteAllString($labelString, ",", ", ");
+	}
+	return $labels;
+}
+
+
+global proc shapesUI_setRegionLabelsPrefs()
+{
+	//
+	// store the user labels in the environment variable
+	//
+	string $labels = `textFieldGrp -q -tx shpUI_regionLabelsField`;
+	$labels = substituteAllString($labels, " ", "");
+	optionVar -sv SHAPESUserRegionLabels $labels;
+	
+	shapesUI_listUserRegionLabels;
+}
+
+
+global proc shapesUI_resetRegionLabelPrefs()
+{
+	//
+	// reset the user identifier
+	//
+	optionVar -rm SHAPESUserRegionLabels;
+	
+	shapesUI_listUserRegionLabels;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// search and filter
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_searchJointString( string $list )
+{
+	//
+	// search in the target or joint list for the given string
+	//
+	global string $gShapes_currentSearchList;
+	
+	string $treeItem;
+	string $searchField;
+	if ($list == "target")
+	{
+		$treeItem = "shpUI_targetTree";
+		$searchField = "shpUI_targetSearchField";
+		// toggle the filter buttons
+		shapesUI_resetFilterCheckBox 0;
+	}
+	else
+	{
+		$treeItem = "shpUI_driverTree";
+		$searchField = "shpUI_driverSearchField";
+	}
+	
+	string $query = `textFieldGrp -q -tx $searchField`;
+	string $queryList[];
+	tokenize $query "+" $queryList;
+	string $items[] = `treeView -q -ch "" $treeItem`;
+	if ($query != "")
+	{
+		for ($i in $items)
+		{
+			int $state = 0;
+			for ($q in $queryList)
+			{
+				if (`gmatch $i ("*" + $q + "*")`)
+					$state = 1;
+			}
+			treeView -e -iv $i $state $treeItem;
+			if ($state)
+				shapesUI_expandParents $treeItem $i;
+		}
+	}
+	else
+		shapesUI_clearSearch $list 0;
+	
+	// remember the last searched list
+	// important for keeping the filter active when adding new drivers
+	if ($query != "")
+		$gShapes_currentSearchList = $list;
+	else
+		$gShapes_currentSearchList = "";
+}
+
+
+global proc string shapesUI_expandParents( string $treeItem, string $item )
+{
+	while ($item != "")
+	{
+		$item = `treeView -q -ip $item $treeItem`;
+		if ($item != "")
+		{
+			treeView -e -ei $item 1 $treeItem;
+			$item = shapesUI_expandParents($treeItem, $item);
+		}
+	}
+	return $item;
+}
+
+
+global proc shapesUI_clearSearch( string $list, int $filter )
+{
+	//
+	// clear the search field and list all targets or drivers
+	//
+	global string $gShapes_currentSearchList;
+	
+	$gShapes_currentSearchList = "";
+	
+	string $treeItem;
+	string $searchField;
+	int $value;
+	
+	if ($list == "target")
+	{
+		$treeItem = "shpUI_targetTree";
+		$searchField = "shpUI_targetSearchField";
+		$value = `optionVar -q SHAPESAllowTargetReorder`;
+	}
+	else
+	{
+		$treeItem = "shpUI_driverTree";
+		$searchField = "shpUI_driverSearchField";
+		$value = `optionVar -q SHAPESSortJointList`;
+	}
+	
+	string $items[] = `treeView -q -ch "" $treeItem`;
+	if (!size($items))
+		return;
+	
+	textFieldGrp -e -tx "" $searchField;
+	for ($i in $items)
+		treeView -e -iv $i 1 -ornament $i 0 0 0 $treeItem;
+	// set the list sorting
+	treeView -e -rto $value $treeItem;
+	
+	// toggle the filter buttons
+	// only if it's the target list
+	if ($list == "target")
+	{
+		// when the clearing is not related to the filtering
+		// reset the filter check boxes
+		if (!$filter)
+			shapesUI_resetFilterCheckBox 0;
+		// if the clearing comes from disabling the filters we need to keep the
+		// value indicators visible when in live mode
+		else if (`iconTextCheckBox -q -v shpUI_filterLiveCheck`)
+			shapesJob_updateDisplayValue;
+		
+		// filter the list by type
+		int $type = 1;
+		if (`menuItem -q -cb shpUI_listByTypeRadio2`)
+			$type = 2;
+		else if (`menuItem -q -cb shpUI_listByTypeRadio3`)
+			$type = 3;
+		shapesUI_filterListByType $type 0;
+	}
+}
+
+
+global proc shapesUI_selectNode( string $mode, string $shapes[], string $targetName, string $listItem )
+{
+	//
+	// select the current blendshape node or the selected joint
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_btnData[];
+	
+	string $node;
+	if ($mode == "blendShape")
+	{
+		$node = $gShapes_bsNode;
+	}
+	else if ($mode == "driver")
+	{
+		string $sel[] = `treeView -q -si shpUI_driverTree`;
+		if (!size($sel) || shapesMain_isDriverGroup($sel[0]))
+			return;
+		$node = $sel[0];
+	}
+	else if ($mode == "button")
+		$node = $shapes[0];
+	else if ($mode == "animation")
+	{
+		select -cl;
+		int $ids[] = shapesMain_getButtonDataIds($shapes);
+		for ($i = 0; $i < size($ids); $i ++)
+		{
+			string $dataString[] = dict_getIndexedSubValue($gShapes_btnData[$ids[$i]], "buttons", 0, "type");
+			if ($dataString[0] == "animation")
+				select -add (dict_getIndexedSubValue($gShapes_btnData[$ids[$i]], "buttons", 0, "node"));
+		}
+		return;
+	}
+	
+	if ($node != "" && $node != "None")
+	{
+		// get the current selection
+		// if the node from the button and the current selection match
+		// offer to delete the node
+		string $current[] = `ls -sl`;
+		if ($mode == "button" && size($current))
+		{
+			if ($current[0] == $node)
+			{
+				string $queryPlug = shapesMain_getQueryPlug($targetName);
+				string $connection[] = `listConnections -s 1 -d 0 -p 1 -c 1 $queryPlug`;
+				string $confirm = `confirmDialog	-t "SHAPES" 
+													-m "Delete the incoming driver node or connection?" 
+													-b "Delete Node" 
+													-b "Break Connection" 
+													-b "Cancel" 
+													-db "Cancel" 
+													-cb "Cancel" 
+													-ds "Cancel"`;
+				if ($confirm == "Delete Node")
+					delete $node;
+				else if ($confirm == "Break Connection")
+					disconnectAttr $connection[1] $connection[0];
+				shapesMain_refreshTargetItem {$targetName};
+			}
+			else
+				select -r $node;
+		}
+		else
+			select -r $node;
+	}
+}
+
+
+global proc shapesUI_selectFromScene()
+{
+	//
+	// find the node selected in the scene in the driver list
+	//
+	string $node[] = `ls -sl -fl`;
+	if (!size($node))
+		return;
+	if (size(stringToStringArray($node[0], ".")) > 1)
+		return;
+	
+	if (!shapesUI_focusOnSelectedItem(0, "shpUI_driverTree", $node[0]))
+		shapesMain_storeCustomDriver $node[0] 0;
+	
+	shapesDriver_collectJointInfo;
+}
+
+
+global proc shapesUI_filterDriverList( string $btnItem, int $state )
+{
+	//
+	// display only the clicked type of nodes in the driver list
+	//
+	global int $gShapes_driverListIsFiltered;
+	global string $gShapes_driverItems;
+	global string $gShapes_driverListFilterType;
+	global string $gShapes_selectedDriver;
+	
+	string $type = dict_getStringValue($gShapes_driverItems, $btnItem);
+	
+	if ($gShapes_driverListFilterType != "")
+		$type = $gShapes_driverListFilterType;
+	
+	string $items[] = `treeView -q -ch "" shpUI_driverTree`;
+	for ($i in $items)
+	{
+		if (!$gShapes_driverListIsFiltered)
+		{
+			if (dict_getStringValue($gShapes_driverItems, $i) == $type)
+				treeView -e -iv $i 1 shpUI_driverTree;
+			else
+				treeView -e -iv $i 0 shpUI_driverTree;
+		}
+		else
+			treeView -e -iv $i 1 shpUI_driverTree;
+	}
+	
+	if (!$gShapes_driverListIsFiltered)
+	{
+		$gShapes_driverListIsFiltered = 1;
+		$gShapes_driverListFilterType = $type;
+	}
+	else
+	{
+		$gShapes_driverListIsFiltered = 0;
+		$gShapes_driverListFilterType = "";
+		shapesUI_focusOnSelectedItem 0 "shpUI_driverTree" $gShapes_selectedDriver;
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// sculpt mode dependencies
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildSculptCompareSlider()
+{
+	//
+	// create the slider for the sculpt compare
+	//
+	global string $gShapes_compareSlider;
+	
+	if (`floatSliderGrp -ex $gShapes_compareSlider`)
+		deleteUI $gShapes_compareSlider;
+	
+	$gShapes_compareSlider = `floatSliderGrp	-l "Compare" 
+												-p shpUI_compareSliderColumn
+												-f 0 
+												-v 0 
+												-min 0 
+												-max 1 
+												-pre 3 
+												-cw2 160 100 
+												-co2 0 5 
+												-ct2 "left" "both" 
+												-dc shapesSculpt_compareSculpt 
+												-cc shapesSculpt_resetCompare`;
+}
+
+
+global proc string shapesUI_buildSculptCompareComboSlider( string $label )
+{
+	//
+	// create the combo sliders for the sculpt compare
+	//
+	global string $gShapes_bsNode;
+	
+	float $value = `getAttr ($gShapes_bsNode + "." + $label)`;
+	string $slider = `floatSliderGrp 	-l $label 
+										-p shpUI_compareSliderComboColumn
+										-h 20 
+										-f 0 
+										-v $value 
+										-min 0 
+										-max 1 
+										-pre 3 
+										-cw2 160 100 
+										-co2 0 5 
+										-ct2 "left" "both"`;
+	floatSliderGrp -e -cc ("evalDeferred(\"floatSliderGrp -e -v " + $value + " " + $slider + "; setAttr " + $gShapes_bsNode + "." + $label + " " + $value + "\")") $slider;
+	string $plug[] = `listConnections -s 1 -d 0 -c 1 -p 1 ($gShapes_bsNode + "." + $label)`;
+	if (size($plug))
+		disconnectAttr $plug[1] $plug[0];
+	else
+		$plug = {"none", "none"};
+	connectControl $slider ($gShapes_bsNode + "." + $label);
+	
+	string $returnString = $slider;
+	$returnString += "," + stringArrayToString($plug, ",");
+	
+	return $returnString;
+}
+
+
+global proc int shapesUI_getExportSculptPreference()
+{
+	//
+	// return the id for the export sculpt radio button
+	//
+	int $index;
+	if (`radioCollection -ex shpUI_exportRadioCollection`)
+	{
+		string $radio = `radioCollection -q -sl shpUI_exportRadioCollection`;
+		$index = `match "[0-9]+" $radio`;
+	}
+	else if (`optionVar -ex SHAPESExportMode`)
+		$index = `optionVar -q SHAPESExportMode`;
+	return $index;
+}
+
+
+global proc shapesUI_manageUIModeDependencies( int $folder, int $editButton, int $state )
+{
+	//
+	// enables/disables the sculpt options menu items
+	// when entering/leaving edit modes
+	//
+	string $frame[] = {"shpUI_drivenSetFrame", "shpUI_shapeWeightsLayout", "shpUI_regionFrame", "shpUI_animationFrame", "shpUI_driverFrame"};
+	
+	for ($f = 0; $f < size($frame); $f ++)
+	{
+		if ($folder != $f)
+			control -e -en $state $frame[$f];
+	}
+	if ($editButton)
+		button -e -en $state shpUI_sculptButton;
+	
+	shapesUI_setCorrectiveChannelsState $state;
+}
+
+
+global proc shapesUI_setCorrectiveChannelsState( int $state )
+{
+	//
+	// enable/disable corrective controls when entering/leaving sculpt/tweak mode
+	//
+	global int $gShapes_channelsActive;
+	global int $gShapes_sculptProcess;
+	
+	string $childCtrls[] = `frameLayout -q -ca shpUI_sliderFrame`;
+	if (size($childCtrls))
+	{
+		for ($layout in $childCtrls)
+		{
+			if (!startsWith($layout, "separator"))
+			{
+				string $ctrls[] = `rowLayout -q -ca $layout`;
+	
+				if (size($ctrls))
+				{
+					for ($ctrl in $ctrls)
+					{
+						if (startsWith($ctrl, "iconTextButton"))
+							control -e -en $state $ctrl;
+					}
+				}
+			}
+		}
+	}
+	
+	$gShapes_channelsActive = $state;
+	
+	$childCtrls = `rowLayout -q -ca shpUI_editButtonsLayout`;
+	if (size($childCtrls))
+	{
+		for ($c = 3; $c < size($childCtrls); $c ++)
+			control -e -en $state $childCtrls[$c];
+	}
+}
+
+
+global proc shapesUI_toggleSculptButtonLabel()
+{
+	//
+	// toggles the label of the sculpt button depending on maya or mudbox sculpt mode
+	//
+	global int $gShapes_paintWeightsProcess;
+	global int $gShapes_sculptProcess;
+	global string $gShapes_sculptButtonLabel;
+	
+	int $sel = shapesUI_getExportSculptPreference();
+	if ($sel == 0)
+		$gShapes_sculptButtonLabel = "Edit Mode";
+	else if ($sel == 1)
+		$gShapes_sculptButtonLabel = "Edit In Mudbox";
+	else if ($sel == 2)
+		$gShapes_sculptButtonLabel = "Edit In ZBrush";
+	else if ($sel == 3)
+		$gShapes_sculptButtonLabel = "Export As FBX";
+	else if ($sel == 4)
+		$gShapes_sculptButtonLabel = "Custom Export";
+	
+	// toggle the label only when not in sculpt mode
+	if (!$gShapes_sculptProcess)
+		button -e -l $gShapes_sculptButtonLabel shpUI_sculptButton;
+}
+
+
+global proc shapesUI_toggleSculptButton( string $skin, string $corrective, string $connectInfo[], string $view, string $slider, int $mode )
+{
+	//
+	// handles the display of the sculpt mode enter/exit buttons
+	// mode 0 = enter
+	// mode 1 = exit
+	//
+	global int $gShapes_tweakWithCombo;
+	global string $gShapes_camAttrDict;
+	
+	if ($mode == 0)
+	{
+		int $sel = shapesUI_getExportSculptPreference();
+		string $btnString = "Exit Edit Mode";
+		string $btnStringShort = "Exit";
+		if ($sel == 3)
+		{
+			$btnString = "Import From FBX";
+			$btnStringShort = "Import";
+		}
+		
+		// re-define the sculpt button
+		button	-e 
+				-l $btnString 
+				-bgc 0.95 0.1 0.1 
+				-c ("shapesSculpt_exitSculptMode " + $skin + " " + $corrective + " \"" + (stringArrayToString($connectInfo, ",")) + "\" " + $view + " \"" + $slider + "\" 0 0") 
+				shpUI_sculptButton;
+		// if tweaking with a combo attached add another button
+		// allowing to apply the tweak to the combos
+		if ($gShapes_tweakWithCombo)
+		{
+			button	-e 
+					-c ("shapesSculpt_exitSculptMode " + $skin + " " + $corrective + " \"" + (stringArrayToString($connectInfo, ",")) + "\" " + $view + " \"" + $slider + "\" 1 0") 
+					shpUI_propagateButton;
+			evalDeferred("button -e -m 1 shpUI_propagateButton");
+		}
+		
+		// disable the weights buttons
+		shapesUI_toggleWeightsUI 0;
+		
+		// display the hud buttons
+		if (`optionVar -q SHAPESEnableHUD`)
+		{
+			// find the next free block because particular blocks might be already in use
+			int $topBlock = `headsUpDisplay -nfb 2`;
+			int $bottomBlock = `headsUpDisplay -nfb 7`;
+			int $exitId = `hudButton	-s 2 
+										-b $topBlock 
+										-l $btnString 
+										-ba "center" 
+										-bw 110 
+										-bsh "roundRectangle" 
+										-rc ("shapesSculpt_exitSculptMode " + $skin + " " + $corrective + " \"" + (stringArrayToString($connectInfo, ",")) + "\" " + $view + " \"" + $slider + "\" 0 0") 
+										SHAPESHudExit`;
+			int $exitComboId = -1;
+			if ($gShapes_tweakWithCombo)
+			{
+				$topBlock = `headsUpDisplay -nfb 2`;
+				$exitComboId = `hudButton	-s 2 
+											-b $topBlock 
+											-l ($btnStringShort + " And Propagate") 
+											-ba "center" 
+											-bw 130 
+											-bsh "roundRectangle" 
+											-rc ("shapesSculpt_exitSculptMode " + $skin + " " + $corrective + " \"" + (stringArrayToString($connectInfo, ",")) + "\" " + $view + " \"" + $slider + "\" 1 0") 
+											SHAPESHudComboExit`;
+			}
+			int $cancelId = `hudButton	-s 7 
+										-b $bottomBlock 
+										-l "Cancel" 
+										-ba "center" 
+										-bw 60 
+										-bsh "roundRectangle" 
+										-rc ("shapesSculpt_exitSculptMode " + $skin + " " + $corrective + " \"" + (stringArrayToString($connectInfo, ",")) + "\" " + $view + " \"" + $slider + "\" 0 1") 
+										SHAPESHudCancel`;
+	
+			optionVar -iv SHAPESExitHudId $exitId;
+			optionVar -iv SHAPESExitComboHudId $exitComboId;
+			optionVar -iv SHAPESCancelHudId $cancelId;
+		}
+		
+		// show the sculpt frame
+		shapesUI_getCameraAttributes;
+		if (`optionVar -q SHAPESShowSculptFrame`)
+		{
+			float $color[] = {0.15, 0.5, 0.0};
+			if (`shapesGlobal_getMayaVersion` >= 2016 && `modelEditor -q -cme $view`)
+				$color = {0.068, 0.227, 0.0};
+			
+			string $cameraDict = "";
+			$cameraDict = dict_setValue({$cameraDict}, 0, "camera", dict_getStringValue($gShapes_camAttrDict, "camera"));
+			$cameraDict = dict_setValue({$cameraDict}, 0, "filmFit", dict_getStringValue($gShapes_camAttrDict, "filmFit"));
+			$cameraDict = dict_setValue({$cameraDict}, 0, "displayGate", 1);
+			$cameraDict = dict_setValue({$cameraDict}, 0, "displayResolution", 0);
+			$cameraDict = dict_setValue({$cameraDict}, 0, "displayMask", 1);
+			$cameraDict = dict_setArrayValue({$cameraDict}, 0, "color", $color);
+			
+			shapesUI_setCameraAttributes $cameraDict;
+		}
+	}
+	else
+	{
+		shapesUI_createDefaultSculptButton;
+		
+		// enable the weights buttons
+		shapesUI_toggleWeightsUI 1;
+		// disable the sculpt ui buttons
+		shapesUI_dismissSculptUI;
+		// reset the camera attributes
+		shapesUI_setCameraAttributes $gShapes_camAttrDict;
+	}
+}
+
+
+global proc shapesUI_createDefaultSculptButton()
+{
+	//
+	// add the default sculpt mode button
+	//
+	global string $gShapes_sculptButtonLabel;
+	
+	button -e -l $gShapes_sculptButtonLabel -bgc 0.365 0.365 0.365 -c "shapesSculpt_initSculptMode \"\"" shpUI_sculptButton;
+	evalDeferred("button -e -m 0 shpUI_propagateButton");
+}
+
+
+global proc shapesUI_dismissSculptUI()
+{
+	//
+	// disables UI elements when leaving the sculpt mode
+	//
+	menuItem -e -en 0 shpUI_cancelItem;
+	int $exitId = `optionVar -q SHAPESExitHudId`;
+	int $exitComboId = `optionVar -q SHAPESExitComboHudId`;
+	int $cancelId = `optionVar -q SHAPESCancelHudId`;
+	headsUpDisplay -rid $exitId;
+	if ($exitComboId != -1)
+		headsUpDisplay -rid $exitComboId;
+	headsUpDisplay -rid $cancelId;
+	optionVar -rm SHAPESExitHudId;
+	optionVar -rm SHAPESExitComboHudId;
+	optionVar -rm SHAPESCancelHudId;
+}
+
+
+global proc shapesUI_getCameraAttributes()
+{
+	//
+	// get the camera attributes to restore them
+	// after exiting the sculpt mode
+	//
+	global string $gShapes_camAttrDict;
+	
+	string $view = shapesSculpt_getCurrentModelPanel();
+	if ($view == "")
+		return;
+	
+	string $cam = `modelEditor -q -cam $view`;
+	
+	$gShapes_camAttrDict = dict_setValue({$gShapes_camAttrDict}, 0, "camera", $cam);
+	$gShapes_camAttrDict = dict_setValue({$gShapes_camAttrDict}, 0, "filmFit", `getAttr ($cam + ".filmFit")`);
+	$gShapes_camAttrDict = dict_setValue({$gShapes_camAttrDict}, 0, "displayGate", `getAttr ($cam + ".displayFilmGate")`);
+	$gShapes_camAttrDict = dict_setValue({$gShapes_camAttrDict}, 0, "displayResolution", `getAttr ($cam + ".displayResolution")`);
+	$gShapes_camAttrDict = dict_setValue({$gShapes_camAttrDict}, 0, "displayMask", `getAttr ($cam + ".displayGateMask")`);
+	float $col[] = `getAttr ($cam + ".displayGateMaskColor")`;
+	$gShapes_camAttrDict = dict_setArrayValue({$gShapes_camAttrDict}, 0, "color", $col);
+}
+
+
+global proc shapesUI_setCameraAttributes( string $attrDict )
+{
+	//
+	// set the camera attributes when entering/exiting sculpt mode
+	//
+	string $camera = dict_getStringValue($attrDict, "camera");
+	
+	float $value;
+	if (!shapesUI_getAttributeLockState($camera + ".filmFit"))
+	{
+		$value = dict_getValue($attrDict, "filmFit");
+		setAttr ($camera + ".filmFit") $value;
+	}
+	
+	if (!shapesUI_getAttributeLockState($camera + ".displayFilmGate"))
+	{
+		$value = dict_getValue($attrDict, "displayGate");
+		setAttr ($camera + ".displayFilmGate") $value;
+	}
+	
+	if (!shapesUI_getAttributeLockState($camera + ".displayResolution"))
+	{
+		$value = dict_getValue($attrDict, "displayResolution");
+		setAttr ($camera + ".displayResolution") $value;
+	}
+	
+	if (!shapesUI_getAttributeLockState($camera + ".displayGateMask"))
+	{
+		$value = dict_getValue($attrDict, "displayMask");
+		setAttr ($camera + ".displayGateMask") $value;
+	}
+	
+	if (!shapesUI_getAttributeLockState($camera + ".displayGateMaskColor"))
+	{
+		float $values[] = dict_getFloatValueArray($attrDict, "color");
+		setAttr ($camera + ".displayGateMaskColor") -type double3 $values[0] $values[1] $values[2];
+	}
+}
+
+
+global proc int shapesUI_getAttributeLockState( string $nodeAttr )
+{
+	//
+	// return true if the attribute is locked or connected
+	//
+	int $locked = `getAttr -l $nodeAttr`;
+	string $connected[] = `listConnections -s 1 -d 0 $nodeAttr`;
+	if ($locked || size($connected))
+		return 1;
+	return 0;
+}
+
+
+global proc shapesUI_setOrderBasedMirror( int $state )
+{
+	//
+	// force position based mirroring if the mesh has more than one shell
+	//
+	// store the current state for the preferences
+	// which will change once the state is changed
+	optionVar -iv SHAPESOrderBasedMirror $state;
+	
+	if (`radioCollection -ex shpUI_mirrorTypeRadioCollection`)
+	{
+		if ($state == 1)
+		{
+			radioButton -e -sl shpUI_orderBasedMirrorRadio;
+			shapesUI_setOrderBasedMirrorInfo 0 1;
+		}
+		else
+			radioButton -e -sl shpUI_positionBasedMirrorRadio;
+	}
+}
+
+
+global proc shapesUI_setOrderBasedMirrorInfo( int $state, int $clear )
+{
+	//
+	// sets the info in case order based mirroring cannot be used
+	//
+	if (`rowColumnLayout -ex shpUI_orderBasedMirrorInfoRow`)
+	{
+		rowColumnLayout -e -m $state shpUI_orderBasedMirrorInfoRow;
+		string $msg;
+		if (!$clear)
+			$msg = `optionVar -q SHAPESOrderBasedMirrorInfo`;
+		text -e -l $msg shpUI_orderBasedMirrorInfo;
+	}
+}
+
+
+global proc shapesUI_setSymmetryEdgeButtonDefault()
+{
+	//
+	// define the defaults for the symmetry edge button in the preferences window
+	//
+	optionVar -sv SHAPESSymmetryButtonLabel "Current: None";
+	optionVar -sv SHAPESSymmetryButtonCommand "";
+	shapesUI_setSymmetryEdgeButton;
+	
+	shapesUI_setOrderBasedMirrorInfo 0 1;
+}
+
+
+global proc shapesUI_setSymmetryEdgeButton()
+{
+	//
+	// define the symmetry edge button in the preferences window
+	//
+	string $label = `optionVar -q SHAPESSymmetryButtonLabel`;
+	string $cmd = `optionVar -q SHAPESSymmetryButtonCommand`;
+	if (`button -ex shpUI_symmetryEdgeButton`)
+		button -e -l $label -c $cmd shpUI_symmetryEdgeButton;
+}
+
+
+global proc shapesUI_toggleAddNewTargetItemLabel( int $inbetween )
+{
+	//
+	// controls the menu item label for adding new targets
+	// depending if the shape is added as a new target or an in-between
+	//
+	if ($inbetween)
+	{
+		menuItem -e -l "Add Selection As New Default In-Between" shpUI_newDefaultMenuItem;
+		menuItem -e -l "Add Selection As New Posed In-Between" shpUI_newPosedMenuItem;
+	}
+	else
+	{
+		menuItem -e -l "Add Selection As New Default Target" shpUI_newDefaultMenuItem;
+		menuItem -e -l "Add Selection As New Posed Target" shpUI_newPosedMenuItem;
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// export / update mesh UI
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_buildExportUI( int $export )
+{
+	//
+	// opens the window for setting the export/update parameters
+	//
+	global string $gShapes_skinMesh;
+	global string $gShapes_undoInfo;
+	
+	if ($gShapes_skinMesh == "")
+		return;
+	
+	string $exportDir = "/setup";
+	string $title = "Export";
+	if (!$export)
+	{
+		$exportDir = "/transfer";
+		$title = "Transfer";
+	}
+	
+	if ($export)
+		shapesMain_listBlendShapeTargets 1;
+	
+	string $exportPath = shapesUtil_getExportPath($exportDir, 1);
+	if ($exportPath == "")
+		return;
+	
+	if (`window -ex SHAPESExportWin`)
+		deleteUI SHAPESExportWin;
+	
+	if (`windowPref -ex SHAPESExportWin`)
+		windowPref -r SHAPESExportWin;
+	
+	window -t $title -w 300 -h 100 SHAPESExportWin;
+	
+	string $message;
+	if ($export)
+		$message = "Exports all target shapes and the related setup.\n";
+	else
+	{
+		$message += "Transfers the setup to the currently selected mesh.\n\n";
+		$message += "The transfer is based on a wrap deformer requiring both meshes\nto share the same scene space.\n\n";
+	}
+	$message += $gShapes_undoInfo + "\n\nSee the User Guide for more information.";
+	
+	string $form = `formLayout`;
+	
+		string $descLayout = `frameLayout -l "Description" -cll 0 -cl 0 -mw 5 -mh 5`;
+			columnLayout -cal "left";
+			text -l $message;
+		setParent $form;
+	
+		string $pathLayout = `frameLayout -lv 0 -cll 0 -cl 0 -mw 5 -mh 5`;
+			shapesUI_buildExportPathOption $pathLayout $exportPath $export;
+		setParent $form;
+	
+		string $presetsLayout = `frameLayout -l "Presets" -cll 1 -cl 1 -en 0 -mw 5 -mh 5 -m 0`;
+			shapesUI_buildPresetOptions $presetsLayout;
+		setParent $form;
+	
+		string $generalLayout = `frameLayout -l "General" -cll 0 -cl 0 -mw 5 -mh 5`;
+			shapesUI_buildGeneralOptions $generalLayout;
+		setParent $form;
+	
+		string $optionsLayout = `frameLayout -l "Options" -cll 0 -cl 0 -mw 5 -mh 5`;
+		if ($export)
+			shapesUI_buildExportOptions $optionsLayout;
+		else
+			shapesUI_buildUpdateOptions $optionsLayout;
+		setParent $form;
+	
+		int $spacer = 10;
+	
+		string $separator = `separator -style "none"`;
+	
+		string $execute;
+		if ($export)
+		{
+			$execute = `button -l $title -h 30 -c ("shapesUtil_exportShapeSetup 1 \"" + $exportPath + "\" \"\"")`;
+			frameLayout -e -m 0 $presetsLayout;
+			frameLayout -e -m 0 $generalLayout;
+			$spacer = 0;
+		}
+		else
+		{
+			$execute = `button -l $title -h 30 -c ("shapesUtil_transferBlendShapeSetup \"" + $exportPath + "\"")`;
+			frameLayout -e -cl 1 $optionsLayout;
+		}
+		setParent $form;
+	
+		formLayout	-e 
+				
+					-af $descLayout "top" 3 
+					-af $descLayout "left" 3 
+					-af $descLayout "right" 3 
+					-af $pathLayout "left" 3 
+					-af $pathLayout "right" 3 
+					-af $presetsLayout "left" 3 
+					-af $presetsLayout "right" 3 
+					-af $generalLayout "left" 3 
+					-af $generalLayout "right" 3 
+					-af $optionsLayout "left" 3 
+					-af $optionsLayout "right" 3 
+					-af $execute "bottom" 3 
+					-af $execute "left" 3 
+					-af $execute "right" 3 
+				
+					-ac $pathLayout "top" 10 $descLayout 
+					-ac $presetsLayout "top" 10 $pathLayout 
+					-ac $generalLayout "top" $spacer $presetsLayout 
+					-ac $optionsLayout "top" $spacer $generalLayout 
+					-ac $separator "top" 15 $optionsLayout 
+				
+					$form;
+	
+	showWindow SHAPESExportWin;
+}
+
+
+global proc shapesUI_buildExportPathOption( string $parent, string $path, int $export )
+{
+	//
+	// create a file path field when exporting to a custom file
+	//
+	global string $gShapes_bsNode;
+	
+	if (!$export)
+	{
+		columnLayout -cal "left";
+		text -l ("Export Path:\n\n" + $path);
+		setParent $parent;
+	}
+	else
+	{
+		columnLayout -cal "left";
+			checkBox -l "Custom Export Path" -cc shapesUI_enableExportPathField shpUI_customExportPathCheck;
+		setParent ..;
+		
+		string $path;
+		if (`optionVar -ex SHAPESCustomNodeDataExportPath` && `optionVar -q SHAPESCustomNodeDataExportPath` != "")
+			$path = `optionVar -q SHAPESCustomNodeDataExportPath`;
+		else
+			$path = shapesUtil_getExportPath("/setup", 1);
+		
+		string $filePath = $path + "/" + shapesMain_shortenNodePath($gShapes_bsNode, 0) + ".ma";
+		
+		string $pathForm = `formLayout`;
+			string $pathLabel = `text -l "Export Path" -w 74 -al "left"`;
+			textField -w 100 -tx $filePath -en 0 shpUI_exportPathField;
+			button -l "Select" -w 46 -en 0 -c ("shapesUI_selectExportPath \"" + $filePath + "\"") shapesUI_exportPathSelectButton;
+			formLayout	-e 
+					
+						-af $pathLabel "top" 0 
+						-af $pathLabel "bottom" 0 
+						-af $pathLabel "left" 1 
+						-af shpUI_exportPathField "top" 1 
+						-af shapesUI_exportPathSelectButton "top" 0 
+						-af shapesUI_exportPathSelectButton "right" 5 
+					
+						-ac shpUI_exportPathField "left" 5 $pathLabel 
+						-ac shpUI_exportPathField "right" 7 shapesUI_exportPathSelectButton 
+					
+						$pathForm;
+		setParent ..;
+	}
+}
+
+
+global proc shapesUI_enableExportPathField()
+{
+	//
+	// enable/disable the export path field
+	//
+	int $enable;
+	if (`checkBox -q -v shpUI_customExportPathCheck`)
+		$enable = 1;
+	
+	textField -e -en $enable shpUI_exportPathField;
+	button -e -en $enable shapesUI_exportPathSelectButton;
+}
+
+
+global proc shapesUI_selectExportPath( string $path )
+{
+	//
+	// open a window to let the user choose a custom export file path
+	//
+	string $filter = "Maya ASCII (*.ma)";
+	string $userPath[] = `fileDialog2 -dir $path -fm 0 -ff $filter -okc "Select" -cap "Select Export Path"`;
+	if ($userPath[0] == "")
+	{
+		checkBox -e -v 0 shpUI_customExportPathCheck;
+		return;
+	}
+	textField -e -tx $userPath[0] shpUI_exportPathField;
+	if (endsWith($userPath[0], ".ma"))
+		$userPath[0] = `python("import os; os.path.dirname('" + $userPath[0] + "')")`;
+	
+	optionVar -sv SHAPESCustomNodeDataExportPath $userPath[0];
+}
+
+
+global proc shapesUI_buildExportOptions( string $parent )
+{
+	//
+	// creates the option controls for the export window
+	//
+	rowColumnLayout -rs 1 5;
+		string $exportOption = `optionMenu`;
+			menuItem -l "Export Only";
+			menuItem -l "Delete Shape Drivers and Combos After Export";
+			menuItem -l "Delete Entire Blend Shape Setup After Export";
+			//menuItem -l "Delete Reference Edit Items After Export";
+			menuItem -l "Rebuild Blend Shape Setup";
+			menuItem -l "Export Mirrored";
+		string $itemsOption = `optionMenu`;
+			menuItem -l "All Targets";
+			menuItem -l "Reference Edits: Targets";
+			menuItem -l "Reference Edits: Targets And Drivers";
+	setParent ..;
+	
+	shapesUI_getExportUIOptions 1 ($exportOption + "," + $itemsOption);
+	
+	optionMenu -e -cc ("shapesUI_setExportUIOptions 1 \"" + $exportOption + "," + $itemsOption + "\"") $exportOption;
+	optionMenu -e -cc ("shapesUI_setExportUIOptions 1 \"" + $exportOption + "," + $itemsOption + "\"") $itemsOption;
+}
+
+
+global proc shapesUI_buildPresetOptions( string $parent )
+{
+	//
+	// creates the preset controls for the export window
+	//
+	rowColumnLayout -rs 1 5;
+		string $exportOption = `optionMenu`;
+			menuItem -l "User Defined";
+			menuItem -l "Transfer All Blend Shapes";
+			menuItem -l "Transfer Selected Blend Shapes";
+			menuItem -l "Update";
+			menuItem -l "Transfer Resolution Workflow";
+		text -l "Transfer yields custom options as set below";
+	setParent ..;
+}
+
+
+global proc shapesUI_buildGeneralOptions( string $parent )
+{
+	//
+	// creates the general option controls for the transfer window
+	//
+	rowColumnLayout -nc 2 -cw 1 100 -cal 1 "left" -rs 1 5;
+		text -l "Target Node";
+		optionMenu shpUI_transferTargetNodeOption;
+			menuItem -l "Create New";
+			string $nodes[] = `ls -type "blendShape"`;
+			if (size($nodes))
+			{
+				for ($n in $nodes)
+					menuItem -l $n;
+			}
+	setParent ..;
+}
+
+
+global proc shapesUI_buildUpdateOptions( string $parent )
+{
+	//
+	// creates the option controls for the transfer window
+	//
+	rowColumnLayout;
+		string $skinCheck = `checkBox -l "Copy Skin Weights (Removes Any Existing)"`;
+		separator -st "none" -h 5;
+		string $hideCheck = `checkBox -l "Hide Previous Mesh"`;
+	setParent ..;
+	
+	rowColumnLayout -nc 2 -cw 1 100 -cal 1 "left" -rs 1 5;
+		text -l "Transfer Mode";
+		string $transferOption = `optionMenu`;
+			menuItem -l "Delete Previous Skin Mesh";
+			menuItem -l "Transfer Targets Only (No Drivers)";
+			menuItem -l "Transfer All";
+			menuItem -l "Transfer And Use Previous As Master";
+			menuItem -l "Transfer All And Use Selection As Master";
+		text -l "Targets";
+		string $targetsOption = `optionMenu`;
+			menuItem -l "All Targets";
+			menuItem -l "Selected Targets/Groups (No Drivers)";
+			menuItem -l "Ignore Selected Targets/Groups (No Drivers)";
+		text -l "Rename";
+		string $renameOption = `optionMenu`;
+			menuItem -l "No Change";
+			menuItem -l "Keep Previous Name";
+			menuItem -l "Swap Names";
+		string $suffixLabel = `text -l "Rename Suffix"`;
+		string $suffixField = `textField`;
+		text -l "Wrap";
+		string $wrapOption = `optionMenu`;
+			menuItem -l "Default";
+			menuItem -l "Wrap Only";
+			menuItem -l "Transfer And Wrap A Duplicate";
+	setParent ..;
+	
+	frameLayout -e -cc "window -e -h 389 SHAPESExportWin" $parent;
+	
+	string $controls[] = {$skinCheck, $transferOption, $targetsOption, $renameOption, $suffixField, $wrapOption, $hideCheck};
+	string $controlsString = stringArrayToString($controls, ",");
+	
+	shapesUI_getExportUIOptions 0 $controlsString;
+	
+	checkBox -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $skinCheck;
+	checkBox -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $hideCheck;
+	optionMenu -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $transferOption;
+	optionMenu -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $targetsOption;
+	optionMenu -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $renameOption;
+	textField -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $suffixField;
+	optionMenu -e -cc ("shapesUI_setExportUIOptions 0 \"" + $controlsString + "\"") $wrapOption;
+}
+	
+
+global proc shapesUI_getExportUIOptions( int $export, string $controls )
+{
+	//
+	// read the user settings in the export ui
+	//
+	global string $gShapes_exportOptions;
+	global string $gShapes_transferOptions;
+	
+	string $var;
+	string $values[];
+	string $valueString;
+	
+	if ($export)
+	{
+		$var = "SHAPESExportOptions";
+		if (`optionVar -ex $var`)
+			$valueString = `optionVar -q $var`;
+		else
+			$valueString = $gShapes_exportOptions;
+		// make sure the transfer options are existing as well
+		optionVar -sv SHAPESTransferOptions $gShapes_transferOptions;
+	}
+	else
+	{
+		$var = "SHAPESTransferOptions";
+		if (`optionVar -ex $var`)
+			$valueString = `optionVar -q $var`;
+		else
+			$valueString = $gShapes_transferOptions;
+		// make sure the export options are existing as well
+		optionVar -sv SHAPESExportOptions $gShapes_exportOptions;
+	}
+	
+	$values = stringToStringArray($valueString, ",");
+	if ($export && size($values) != size(stringToStringArray($gShapes_exportOptions, ",")))
+		$values = stringToStringArray($gShapes_exportOptions, ",");
+	else if (!$export && size($values) != size(stringToStringArray($gShapes_transferOptions, ",")))
+		$values = stringToStringArray($gShapes_transferOptions, ",");
+	
+	string $controlItems[] = stringToStringArray($controls, ",");
+	float $val;
+	if ($export)
+	{
+		$val = $values[0];
+		optionMenu -e -sl $val $controlItems[0];
+		$val = $values[1];
+		optionMenu -e -sl $val $controlItems[1];
+	}
+	else
+	{
+		$val = $values[0];
+		checkBox -e -v $val $controlItems[0];
+		$val = $values[1];
+		optionMenu -e -sl $val $controlItems[1];
+		$val = $values[2];
+		optionMenu -e -sl $val $controlItems[2];
+		$val = $values[3];
+		optionMenu -e -sl $val $controlItems[3];
+		if ($values[4] == "")
+			$values[4] = "_previous";
+		textField -e -tx $values[4] $controlItems[4];
+		$val = $values[5];
+		optionMenu -e -sl $val $controlItems[5];
+		$val = $values[6];
+		checkBox -e -v $val $controlItems[6];
+		
+		// handle disabling
+		shapesUI_toggleTransferOptions $controls;
+	}
+	
+	optionVar -sv $var (stringArrayToString($values, ","));
+}
+
+
+global proc shapesUI_setExportUIOptions( int $export, string $controls )
+{
+	//
+	// set the user settings in the export ui
+	//
+	global string $gShapes_exportOptions;
+	global string $gShapes_transferOptions;
+	
+	string $var;
+	string $values[];
+	
+	if ($export)
+		$var = "SHAPESExportOptions";
+	else
+		$var = "SHAPESTransferOptions";
+	
+	string $controlItems[] = stringToStringArray($controls, ",");
+	string $val;
+	if ($export)
+	{
+		$val = `optionMenu -q -sl $controlItems[0]`;
+		$values[size($values)] = $val;
+		$val = `optionMenu -q -sl $controlItems[1]`;
+		$values[size($values)] = $val;
+	}
+	else
+	{
+		$val = `checkBox -q -v $controlItems[0]`;
+		$values[size($values)] = $val;
+		$val = `optionMenu -q -sl $controlItems[1]`;
+		$values[size($values)] = $val;
+		$val = `optionMenu -q -sl $controlItems[2]`;
+		$values[size($values)] = $val;
+		$val = `optionMenu -q -sl $controlItems[3]`;
+		$values[size($values)] = $val;
+		if (`textField -q -tx $controlItems[4]` == "")
+			textField -e -tx "_previous" $controlItems[4];
+		$val = `textField -q -tx $controlItems[4]`;
+		$values[size($values)] = $val;
+		$val = `optionMenu -q -sl $controlItems[5]`;
+		$values[size($values)] = $val;
+		$val = `checkBox -q -v $controlItems[6]`;
+		$values[size($values)] = $val;
+		
+		// handle disabling
+		shapesUI_toggleTransferOptions $controls;
+	}
+	
+	optionVar -sv $var (stringArrayToString($values, ","));
+}
+
+
+global proc shapesUI_toggleTransferOptions( string $controls )
+{
+	//
+	// enable/disable controls based on
+	// the selection of transfer options
+	//
+	int $enable[] = {1, 1, 1, 1, 1, 1, 1};
+	
+	string $controlItems[] = stringToStringArray($controls, ",");
+	
+	if (`optionMenu -q -sl $controlItems[1]` == 1)
+	{
+		optionMenu -e -sl 1 $controlItems[5];
+		$enable[5] = 0;
+	}
+	
+	if (`optionMenu -q -sl $controlItems[3]` != 2)
+		$enable[4] = 0;
+	
+	if (`optionMenu -q -sl $controlItems[5]` == 2)
+		$enable = {0, 0, 0, 0, 0, 1, 0};
+	
+	for ($c = 0; $c < size($controlItems); $c ++)
+		control -e -en $enable[$c] $controlItems[$c];
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// connecting blend shape nodes
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesUI_connectBlendShapeNodeUI()
+{
+	//
+	// opens a window to let the user connect two blend shape nodes
+	//
+	string $win = "SHAPESConnectBlendShapeNodesWin";
+	if (`window -ex $win`)
+		deleteUI $win;
+	
+	window -t "Connect Blend Shape Nodes" -wh 280 192 $win;
+	
+	frameLayout -lv 0;
+		text -l "Select two blend shape nodes to connect.\nThe first selection acts as the driver." -h 40;
+	
+		string $listForm = `formLayout`;
+			string $list = `textScrollList -ams 1 shpUI_blendShapeNodesList`;
+			string $orderText = `text -l "source -> destination" -h 30`;
+			string $button = `button -l "Connect" -h 30 -c ("shapesUI_executeConnectBlendShapeNodes " + $win)`;
+	
+			formLayout	-e 
+				
+						-af $list "top" 0 
+						-af $list "left" 0 
+						-af $list "right" 0 
+						-af $orderText "left" 0 
+						-af $orderText "right" 0 
+						-af $button "bottom" 0 
+						-af $button "left" 0 
+						-af $button "right" 0 
+				
+						-ac $list "bottom" 3 $orderText 
+						-ac $orderText "bottom" 3 $button 
+				
+						$listForm;
+	
+		setParent ..;
+	setParent ..;
+	
+	string $nodes[] = `ls -type "blendShape"`;
+	if (size($nodes))
+	{
+		for ($n in $nodes)
+			textScrollList -e -a $n shpUI_blendShapeNodesList;
+	}
+	
+	textScrollList -e -sc ("shapesUI_connectBlendShapeNodeTrackSelection " + $orderText) shpUI_blendShapeNodesList;
+	
+	showWindow $win;
+}
+
+global proc shapesUI_connectBlendShapeNodeTrackSelection( string $textControl )
+{
+	//
+	// creates an ordered list based on the list selection
+	//
+	global string $gShapes_orderedBsList[];
+	
+	string $nodes[] = `textScrollList -q -si shpUI_blendShapeNodesList`;
+	if (size($nodes))
+	{
+		if (size($gShapes_orderedBsList) == 0 || size($gShapes_orderedBsList) >= 2)
+			$gShapes_orderedBsList = $nodes;
+		else
+		{
+			if (size($gShapes_orderedBsList) == 1 && size($nodes) == 1 && $gShapes_orderedBsList[0] != $nodes[0])
+				$gShapes_orderedBsList[0] = $nodes[0];
+			
+			if (size($nodes) > 1)
+			{
+				for ($n in $nodes)
+				{
+					if (!stringArrayContains($n, $gShapes_orderedBsList))
+						$gShapes_orderedBsList[size($gShapes_orderedBsList)] = $n;
+				}
+			}
+		}
+	}
+	
+	text -e -l ($gShapes_orderedBsList[0] + " -> " + $gShapes_orderedBsList[1]) $textControl;
+}
+
+
+global proc shapesUI_executeConnectBlendShapeNodes( string $win )
+{
+	//
+	// select the nodes from the list
+	// and perform the connection
+	//
+	global string $gShapes_orderedBsList[];
+	
+	if (!size($gShapes_orderedBsList) || size($gShapes_orderedBsList) != 2)
+		error "Select two blend shape nodes to connect";
+	
+	select -r $gShapes_orderedBsList;
+	shapesUtil_connectBlendShapeNodes;
+	
+	deleteUI $win;
+}
+
+
+global proc SHAPES_ui(){}

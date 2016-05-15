@@ -1,0 +1,45 @@
+End User License Agreement for SHAPES
+
+This End User License Agreement ("EULA") is a legal agreement between you (either an individual or a single entity) and the author of this SOFTWARE PRODUCT (brave rabbit - Clemens & Barenbrock GbR) with regard to the copyrighted SOFTWARE PRODUCT (SHAPES - herein referred to as "SOFTWARE PRODUCT") provided with this EULA.
+
+The term "SOFTWARE PRODUCT" means computer software and may include associated media, any printed materials, and any "online" or electronic documentation. Use of any software and related documentation ("SOFTWARE PRODUCT") provided to you by brave rabbit in whatever form or media, will constitute your acceptance of these terms, unless separate terms are provided by the software supplier, in which case certain additional or different terms may apply.
+
+BY DOWNLOADING, INSTALLING, OBTAINING A LICENSE KEY, OR OTHERWISE ACCESSING OR USING THE SOFTWARE PRODUCT, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS AGREEMENT, THAT YOU UNDERSTAND IT, AND THAT YOU ACCEPT AND AGREE TO BE BOUND BY ITS TERMS. IF AT ANY TIME YOU ARE NOT WILLING TO BE BOUND BY THE TERMS OF THIS AGREEMENT, YOU SHOULD TERMINATE THE DOWNLOAD AND/OR INSTALLATION PROCESS, IMMEDIATELY CEASE AND REFRAIN FROM ACCESSING OR USING THE SOFTWARE AND DELETE ANY COPIES YOU MAY HAVE.
+
+IF YOU DO NOT AGREE TO THE TERMS OF THIS EULA, BRAVE RABBIT IS UNWILLING TO LICENSE THE SOFTWARE PRODUCT TO YOU.
+
+1. Grant Of License a.) brave rabbit grants to you a personal, non-transferable and non-exclusive right to use the copy of the SOFTWARE PRODUCT provided with this EULA.
+
+b.) You agree that you may not copy the written materials accompanying the SOFTWARE PRODUCT.
+
+c.) You are allowed to have two copies of the SOFTWARE PRODUCT installed at the same time, one on your working computer and one on your private computer. You agree to only use it on a single computer alone and have no other person use the copy on the second computer at the same time. You agree you will not copy or install the SOFTWARE PRODUCT beyond the limit of the allowed two copies.
+
+d.) Modifying, translating, renting, copying, transferring or assigning all or part of the SOFTWARE PRODUCT, or any rights granted hereunder, to any other persons and removing any proprietary notices, labels or marks from the SOFTWARE PRODUCT is strictly prohibited.
+
+e.) Furthermore, you hereby agree not to create derivative works based on the SOFTWARE PRODUCT.
+
+f.) You may not transfer this SOFTWARE PRODUCT.
+
+2. Copyright The SOFTWARE PRODUCT is licensed, not sold to you by brave rabbit. You acknowledge that no title to the intellectual property in the SOFTWARE PRODUCT is transferred to you. brave rabbit and its suppliers own all right, title and interest in and to the SOFTWARE PRODUCT and reserve all rights not expressly granted to you in this EULA. You agree to refrain from any action that would diminish such rights or would call them into question. All copies of the SOFTWARE PRODUCT will contain the same proprietary notices as contained in or on the SOFTWARE PRODUCT. All title and copyrights in and to the SOFTWARE PRODUCT (including but not limited to any images, photographs, animations, video, audio, music, text and "applets," incorporated into the PRODUCT), the accompanying printed materials, and any copies of the SOFTWARE PRODUCT, are owned by brave rabbit or its suppliers. The PRODUCT is protected by copyright laws and international treaty provisions.
+
+3. Reverse Engineering You may not reverse engineer, decompile, disassemble, create derivative works or otherwise try to discover any source code or underlying structures, ideas or algorithms of the SOFTWARE PRODUCT in whole or in part. Unauthorized copying of the SOFTWARE PRODUCT or failure to comply with the above restrictions will result in automatic termination of this Agreement and the reversion of the rights granted hereunder to brave rabbit.
+
+4. Termination Without prejudice to any other rights, brave rabbit may terminate this EULA if you fail to comply with the terms and conditions of this EULA. In such event, you must destroy all copies of the SOFTWARE PRODUCT and all of its component parts.
+
+5. Disclaimer of Warranty THE SOFTWARE PRODUCT IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD-PARTY RIGHTS. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE PRODUCT IS WITH YOU. NEITHER BRAVE RABBIT NOR ITS SUPPLIERS WARRANT THAT THE FUNCTIONS CONTAINED IN THE SOFTWARE PRODUCT WILL MEET YOUR REQUIREMENTS OR THAT THE OPERATION OF THE SOFTWARE PRODUCT WILL BE UNINTERRUPTED OR ERROR-FREE. BRAVE RABBIT IS NOT OBLIGATED TO PROVIDE ANY UPDATES TO THE SOFTWARE.
+
+6. No Liability For Damages In no event shall the author of this SOFTWARE PRODUCT be liable for any special, consequential, incidental, direct or indirect damages whatsoever (including, without limitation, damages for loss of business profits, business interruption, for personal injury, loss of business information, or any other pecuniary loss) arising out of the use of or inability to use this product, even if the author of this SOFTWARE PRODUCT is aware of the possibility of such damages and known defects, any claim by a third party and even if the remedy fails of its essential purpose.
+
+7. Rental You may not loan, rent, or lease the SOFTWARE PRODUCT.
+
+8. Update and Maintenance Upgrades for the SOFTWARE PRODUCT are FREE of charge.
+
+9. Product Support Product support for the SOFTWARE PRODUCT is provided by brave rabbit. For product support, please send an email to brave rabbit. Should you have any questions concerning this, please refer to the address provided in the documentation or on the SOFTWARE PRODUCT website.
+
+10. Indemnification By You If you distribute the SOFTWARE PRODUCT in violation of this Agreement, you agree to indemnify, hold harmless and defend brave rabbit and its suppliers from and against any claims or lawsuits, including attorney's fees that arise or result from the use or distribution of the SOFTWARE PRODUCT in violation of this Agreement.
+
+11. Additional Terms for Educational Licensees
+A free copy of the SOFTWARE PRODUCT is provided for educational purposes or private uses as a personal learning edition. The use of the SOFTWARE PRODUCT or the created data by an educational institution or for commercial purposes is a violation of this Agreement. Educational institution means an educational institution which has been accredited by an authorized governmental agency within its applicable local, state, provincial, federal, or national government and has the primary purpose of teaching its enrolled students.
+
+
+The information contained herein is subject to change without notice. brave rabbit shall not be liable for technical or editorial errors or omissions contained herein.

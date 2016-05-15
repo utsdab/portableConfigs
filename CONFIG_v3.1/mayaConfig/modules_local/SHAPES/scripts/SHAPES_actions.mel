@@ -1,0 +1,1705 @@
+// --------------------------------------------------------------------------------------------------
+//
+// SHAPES
+//
+// blend shape editing tool for Maya
+//
+// required plugins:
+//   SHAPESTools
+//
+// Ingo Clemens
+// www.braverabbit.com
+//
+// copyright brave rabbit, Ingo Clemens 2014-2016
+//
+// --------------------------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------------------------
+//
+// THE SOFTWARE PRODUCT IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR
+// IMPLIED, INCLUDING, BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+// PURPOSE AND NON-INFRINGEMENT OF THIRD-PARTY RIGHTS. THE ENTIRE RISK AS TO THE QUALITY AND
+// PERFORMANCE OF THE SOFTWARE PRODUCT IS WITH YOU.
+// NEITHER BRAVE RABBIT NOR ITS SUPPLIERS WARRANT THAT THE FUNCTIONS CONTAINED IN THE SOFTWARE
+// PRODUCT WILL MEET YOUR REQUIREMENTS OR THAT THE OPERATION OF THE SOFTWARE PRODUCT WILL BE
+// UNINTERRUPTED OR ERROR-FREE. BRAVE RABBIT IS NOT OBLIGATED TO PROVIDE ANY UPDATES TO THE
+// SOFTWARE.
+// IN NO EVENT SHALL THE AUTHOR OF THIS SOFTWARE PRODUCT BE LIABLE FOR ANY SPECIAL, CONSEQUENTIAL,
+// INCIDENTAL, DIRECT OR INDIRECT DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
+// LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, FOR PERSONAL INJURY, LOSS OF BUSINESS
+// INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THIS
+// PRODUCT, EVEN IF THE AUTHOR OF THIS SOFTWARE PRODUCT IS AWARE OF THE POSSIBILITY OF SUCH
+// DAMAGES AND KNOWN DEFECTS, ANY CLAIM BY A THIRD PARTY AND EVEN IF THE REMEDY FAILS OF ITS
+// ESSENTIAL PURPOSE.
+//
+// --------------------------------------------------------------------------------------------------
+
+
+// --------------------------------------------------------------------------------------------------
+// blend shape node
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesAction_addBlendShapeNode( int $frontOfChain )
+{
+	//
+	// add a blendshape deformer to the mesh and refresh the blendshape menu
+	//
+	global string $gShapes_bsNode;
+		
+	string $shape = shapesMain_getShapeNode();
+	if ($shape != "")
+	{
+		// Maya 2016 and lower
+		// legacy node order behaviour
+		string $newBs[];
+		if ($frontOfChain < 2)
+		{
+			$newBs = `deformer -type blendShape -foc $shape`;
+			if (!$frontOfChain && $gShapes_bsNode != "" && $gShapes_bsNode != "None")
+				reorderDeformers $newBs[0] $gShapes_bsNode $shape;
+		}
+		// Maya 2016.5 and later
+		// post deformation blend shape node
+		else
+		{
+			$newBs = `deformer -type blendShape -before $shape`;
+			rename $newBs[0] ($newBs[0] + "_post");
+		}
+	}
+	shapesMain_listBlendShapeNodes $shape 0;
+}
+
+
+global proc shapesAction_deleteBlendShapeNode()
+{
+	//
+	// remove the blendshape deformer from the mesh and refresh the blendshape menu
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_bsData[];
+	global string $gShapes_driverPlug[];
+		
+	string $shape = shapesMain_getShapeNode();
+	if ($shape != "")
+	{
+		for ($i = 0; $i < size($gShapes_bsData); $i ++)
+		{
+			shapesDriver_performDeleteWeightDriver(dict_getStringValue($gShapes_bsData[$i], "target"));
+			shapesCombo_deleteComboMultiplier(dict_getStringValue($gShapes_bsData[$i], "target"));
+		}
+		if ($gShapes_bsNode != "None")
+			delete $gShapes_bsNode;
+	}
+	
+	// clear the blendshape data
+	clear $gShapes_bsData;
+	$gShapes_selectedTarget = "";
+	clear $gShapes_driverPlug;
+	// delete the script job
+	shapesJob_createScriptJob "" 1;
+	// refresh the blendshape option menu
+	shapesMain_listBlendShapeNodes $shape 0;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// mesh duplication
+// --------------------------------------------------------------------------------------------------
+
+global proc string shapesAction_duplicateMeshFromMenu( int $original, int $add )
+{
+	//
+	// duplicate the original mesh from the menu
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_skinMesh;
+	
+	if ($gShapes_skinMesh == "")
+		return "";
+	
+	string $geo;
+	string $geoName;
+	if ($original)
+	{
+		$geo = shapesAction_duplicateOrginalMesh($gShapes_skinMesh + "_originalCopy");
+		$geoName = substitute("_extracted", $geo, "");
+	}
+	else
+	{
+		string $dup[] = shapesAction_duplicateDeformedMesh($gShapes_skinMesh, 0);
+		$geo = $dup[0];
+		// check if the mesh is already at world level
+		string $path[] = `ls -l $geo`;
+		string $pathItems[] = stringToStringArray($geo, "|");
+		stringArrayRemoveAtIndex(0, $pathItems);
+		// if not, parent it to the world
+		if (size($pathItems) > 1)
+			$geo = `parent -w $geo`;
+		$geoName = $gShapes_skinMesh + "_deformedCopy";
+	}
+	
+	rename $geo $geoName;
+	select -r $geoName;
+	
+	if (!$add)
+	{
+		sets -e -fe initialShadingGroup $geoName;
+		setAttr ($geoName + ".v") 1;
+	}
+	else
+	{
+		// in case of an empty target rename the mesh before adding
+		if ($original)
+		{
+			// for a first target the blend shape node might not exist yet
+			// so no checking against existing channels is necessary
+			string $newName[];
+			if (`objExists $gShapes_bsNode`)
+				$newName = shapesAction_newChannelName($gShapes_bsNode, "emptyTarget");
+			else
+				$newName[0] = "emptyTarget";
+			string $emptyName = $newName[0];
+			if ($newName[1] != "")
+				$emptyName = $newName[1];
+			$geoName = `rename $geoName $emptyName`;
+		}
+		
+		// make sure that the added mesh is not kept
+		// which is not necessary when only the original or current state
+		// should be added as a target
+		int $state = `optionVar -q SHAPESKeepSelectedMesh`;
+		optionVar -iv SHAPESKeepSelectedMesh 0;
+		shapesAction_addSelectionAsTarget 0 0 0;
+		optionVar -iv SHAPESKeepSelectedMesh $state;
+		
+		// in case of a new empty target set some placeholder data
+		// so that the attributes are not empty to prevent a no data error
+		// when exiting edit mode
+		if ($original)
+		{
+			int $ids[] = shapesMain_getShapeIds(1, {$geoName});
+			setAttr ($gShapes_bsNode + ".it[0].itg[" + $ids[0] + "].iti[6000].ict") -type componentList 1 vtx[0];
+			setAttr ($gShapes_bsNode + ".it[0].itg[" + $ids[0] + "].iti[6000].ipt") -type pointArray 1 0 0 0 1;
+		}
+	}
+	
+	return $geoName;
+}
+
+
+global proc string[] shapesAction_duplicateDeformedMesh( string $geo, int $ignoreBlendShape )
+{
+	//
+	// duplicate the given object and delete the intermediate shape
+	//
+	// disable all blendshape nodes
+	if ($ignoreBlendShape)
+		shapesSculpt_setBlendShapeEnvelope 0;
+	
+	string $resultMesh[] = `duplicate -rc $geo`;
+	shapesMain_deleteIntermediates($resultMesh[0]);
+	
+	string $shapes[] = `listRelatives -s $resultMesh[0]`;
+	string $attrList[] = {"tx", "ty", "tz", "rx", "ry", "rz", "sx", "sy", "sz", "v"};
+	for ($a in $attrList)
+		setAttr -l 0 ($resultMesh[0] + "." + $a);
+	setAttr ($resultMesh[0] + ".v") 0;
+	
+	// enable all blendshape nodes
+	if ($ignoreBlendShape)
+		shapesSculpt_setBlendShapeEnvelope 1;
+	
+	return {$resultMesh[0], $shapes[0]};
+}
+
+
+global proc string shapesAction_duplicateOrginalMesh( string $name )
+{
+	//
+	// duplicate the original mesh without deformation
+	//
+	global string $gShapes_skinMesh;
+	global string $gShapes_customOriginal[];
+	
+	// disable all blendshape nodes
+	shapesSculpt_setBlendShapeEnvelope 0;
+	
+	string $intermediate = shapesMain_getOriginalMesh($gShapes_skinMesh, 0);
+	
+	// create a new mesh rather than simply duplicating the original intermediate shape
+	// this avoids that the duplicated mesh is shown during the creation of mirrored shapes
+	// for some reason the new mesh cannot be hidden before connecting the meshes
+	// which leads to actually no mesh at all
+	// as a workaround the new mesh is scaled to zero, connected, then hidden and scaled back to 1
+	
+	// create the target mesh
+	string $targetShape = `createNode mesh`;
+	string $target[] = `listRelatives -p $targetShape`;
+	// scale the geometry to zero to visually hide it
+	setAttr ($target[0] + ".s") -type double3 0 0 0;
+	
+	// transfer the original mesh points to the copy	
+	connectAttr -f ($intermediate + ".worldMesh[0]") ($targetShape + ".inMesh");
+	// refresh, because directly disconnecting the meshes doesn't actually transfer the mesh info
+	refresh;
+	disconnectAttr ($intermediate + ".worldMesh[0]") ($targetShape + ".inMesh");
+	
+	// rename, hide and scale
+	$target[0] = `rename $target ($name + "_extracted")`;
+	setAttr ($target[0] + ".v") 0;
+	setAttr ($target[0] + ".s") -type double3 1 1 1;
+	
+	// enable all blendshape nodes
+	shapesSculpt_setBlendShapeEnvelope 1;
+	
+	// delete the custom original mesh
+	if (size($gShapes_customOriginal) > 0)
+	{
+		delete $gShapes_customOriginal[0];
+		clear $gShapes_customOriginal;
+	}
+	
+	return $target[0];
+}
+
+
+global proc shapesAction_currentMeshToOriginal()
+{
+	//
+	// creates a new shape from the current deformed state
+	// and applies it to the original shape node
+	//
+	global string $gShapes_skinMesh;
+	global string $gShapes_undoInfo;
+	
+	if ($gShapes_skinMesh == "")
+		return;
+	
+	string $msg = "Do you want to use the currently deformed pose and permanently apply it to the original mesh?\n\n" + $gShapes_undoInfo;
+	if (!shapesGlobal_confirmWindow($msg, "OK"))
+		return;
+	
+	// duplicate the currently deformed mesh and the original mesh
+	string $target[] = shapesAction_duplicateDeformedMesh($gShapes_skinMesh, 0);
+	string $base = shapesAction_duplicateOrginalMesh($gShapes_skinMesh + "_original");
+	
+	// create a temporary blend shape node and activate the baked state
+	string $tempBS[] = `blendShape $target[0] $base`;
+	blendShape -e -w 0 1 $tempBS[0];
+	
+	// find any incoming connections to the original mesh in mesh attribute
+	string $original = shapesMain_getOriginalMesh($gShapes_skinMesh, 0);
+	string $conn[] = `listConnections -s 1 -d 0 -p 1 ($original + ".inMesh")`;
+	
+	// connect the temporary blend shape node to the in mesh plug of the original mesh
+	connectAttr -f ($base + ".worldMesh[0]") ($original + ".inMesh");
+	// refresh, because directly disconnecting the meshes doesn't actually transfer the mesh info
+	refresh;
+	
+	// cleanup
+	delete $target[0] $base;
+	select -cl;
+	
+	// in case of any incoming connections, offer to delete
+	if (size($conn))
+	{
+		string $items[] = stringToStringArray($conn[0], ".");
+		string $msg = "\"" + $items[0] + "\" has been disconnected from \"" + $original + "\" to be able to bake the deformed pose to the original.\n\n";
+		$msg += "Do you want to delete the unused node \"" + $items[0] + "\"?";
+		if (shapesGlobal_confirmWindow($msg, "Delete"))
+			delete $items[0];
+	}
+}
+
+
+global proc shapesAction_newCorrectiveName()
+{
+	//
+	// create a default name for a new corrective
+	// avoid having a duplicate name with an existing target
+	//
+	global string $gShapes_name;
+	global string $gShapes_bsData[];
+	
+	$gShapes_name = "newCorrective";
+	string $defaultName = $gShapes_name;
+	string $targetNames[];
+	for ($i = 0; $i < size($gShapes_bsData); $i ++)
+		$targetNames[size($targetNames)] = dict_getStringValue($gShapes_bsData[$i], "target");
+	if (stringArrayContains($gShapes_name, $targetNames) || `objExists $gShapes_name`)
+	{
+		int $cancel;
+		int $count = 1;
+		while (!$cancel)
+		{
+			$gShapes_name = $defaultName + $count;
+			if (!stringArrayContains($gShapes_name, $targetNames) && !`objExists $gShapes_name`)
+				$cancel = 1;
+			$count ++;
+		}
+	}
+}
+
+
+global proc string[] shapesAction_newName( string $name )
+{
+	//
+	// returns a new name if the given name exists
+	//
+	if (!`objExists $name`)
+		return {$name, ""};
+	
+	string $newName;
+	int $cancel;
+	int $count = 1;
+	while (!$cancel)
+	{
+		$newName = $name + $count;
+		if (!`objExists $newName`)
+			$cancel = 1;
+		$count ++;
+	}
+	
+	return {$name, $newName};
+}
+
+
+global proc string[] shapesAction_newChannelName( string $node, string $attr )
+{
+	//
+	// returns a new name if the given attribute name exists
+	//
+	if (!`attributeQuery -ex -n $node $attr`)
+		return {$attr, ""};
+	
+	string $newAttr;
+	int $cancel;
+	int $count = 1;
+	while (!$cancel)
+	{
+		$newAttr = $attr + $count;
+		if (!`attributeQuery -ex -n $node $newAttr`)
+			$cancel = 1;
+		$count ++;
+	}
+	
+	return {$attr, $newAttr};
+}
+
+
+global proc string shapesAction_fullPath( string $name )
+{
+	//
+	// returns the full path name of the given node
+	//
+	string $long[] = `ls -l $name`;
+	return $long[0];
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// renaming
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesAction_renameCorrective( string $oldName, string $newName )
+{
+	//
+	// callback procedure for renaming a corrective shape
+	// which needs to accept two arguments because if comes from the
+	// tree view rename command;
+	// it's forwarded to the actual rename procedure
+	//
+	if ($oldName != $newName)
+		shapesAction_performRename "Corrective" $oldName $newName;
+}
+
+
+global proc shapesAction_performRename( string $mode, string $oldName, string $newName )
+{
+	//
+	// rename the selected blendshape target to the corrective field string
+	//
+	global int $gShapes_comboProcess;
+	global int $gShapes_index;
+	global int $gShapes_sequenceProcess;
+	global string $gShapes_bsNode;
+	global string $gShapes_bsNodeDict;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_bsData[];
+	global string $gShapes_btnData[];
+	
+	if (`optionMenu -q -v shpUI_bsOption` == "None")
+		return;
+	
+	if ($gShapes_comboProcess || $gShapes_sequenceProcess)
+	{
+		string $infoMsg = "building shape combos";
+		if ($gShapes_sequenceProcess)
+			$infoMsg = "editing the driver sequence";
+		warning ("Renaming is ignored while " + $infoMsg);
+		return;
+	}
+	
+	if ($mode == "Blendshape Node")
+	{
+		$oldName = `optionMenu -q -v shpUI_bsOption`;
+		
+		if (startsWith($oldName, "..:"))
+		{
+			warning "Referenced nodes can not be renamed";
+			return;
+		}
+		
+		string $result = `promptDialog	-t ("Rename " + $mode) 
+										-tx $oldName -m "New Name:" 
+										-b "OK" 
+										-b "Cancel" 
+										-db "OK" 
+										-cb "Cancel" 
+										-ds "Cancel"`;
+		if ($result == "OK")
+		{
+			$newName = `promptDialog -q -tx`;
+			
+			if (`objExists $newName`)
+			{
+				warning "A node with this name already exists in the scene";
+				return;
+			}
+			
+			rename $gShapes_bsNode $newName;
+			$gShapes_bsNode = $newName;
+			string $items[] = `optionMenu -q -ill shpUI_bsOption`;
+			for ($item in $items)
+			{
+				if (`menuItem -q -l $item` == $oldName)
+					menuItem -e -l $newName $item;
+			}
+			
+			// replace the node name in the node dictionary
+			$gShapes_bsNodeDict = dict_removeKey($gShapes_bsNodeDict, $oldName);
+			$gShapes_bsNodeDict = dict_setValue({$gShapes_bsNodeDict}, 0, shapesMain_shortenNodePath($newName, 1), $newName);
+			
+			for ($i = 0; $i < size($gShapes_btnData); $i ++)
+			{
+				string $btnArray[] = dict_getValueArray($gShapes_btnData[$i], "buttons");
+				for ($j = 0; $j < size($btnArray); $j ++)
+				{
+					string $nodeString[] = dict_getIndexedSubValue($gShapes_btnData[$i], "buttons", $j, "node");
+					if ($nodeString[0] != "")
+					{
+						string $replacedName = substitute($oldName, $nodeString[0], $newName);
+						$gShapes_btnData[$i] = dict_setIndexedSubValue($gShapes_btnData[$i], "buttons", $j, "node", $replacedName);
+					}
+				}
+			}
+			
+			for ($i = 0; $i < size($gShapes_bsData); $i ++)
+				shapesDriver_renameWeightDriver (dict_getStringValue($gShapes_bsData[$i], "target"));
+			
+			// clear the target selection to remove any additional name dependencies
+			// mainly for the slider script job which contains the blend shape node name
+			shapesUI_clearListSelection "shpUI_targetTree" "target";
+			
+			// delete the update value display script job
+			shapesJob_initializeDisplayValueScriptJob 0;
+			
+			// update the region list
+			shapesUtil_buildImportMenu "shpUI_regionList";
+		}
+	}
+	else
+	{
+		$newName = substituteAllString($newName, " ", "_");
+		$newName = substituteAllString($newName, "-", "_");
+		
+		if ($newName == $oldName)
+			return;
+		
+		for ($i = 0; $i < size($gShapes_bsData); $i ++)
+		{
+			if (dict_getStringValue($gShapes_bsData[$i], "target") == $newName)
+			{
+				warning "The channel name already exists";
+				shapesMain_listBlendShapeTargets 0;
+				return;
+			}
+		}
+		
+		if ($gShapes_index != -1 && $newName != "" && $oldName != $newName)
+		{
+			string $targetName = dict_getStringValue($gShapes_bsData[$gShapes_index], "target");
+			int $helper = dict_getBoolValue($gShapes_bsData[$gShapes_index], "helper");
+			int $drivenSet = dict_getBoolValue($gShapes_bsData[$gShapes_index], "set");
+			if ($targetName == $oldName)
+			{
+				if (!$drivenSet)
+				{
+					// disconnect the incoming node, if any, and re-connect it after renaming
+					// during testing (once) the incoming node was connected to the old and new attribute
+					// after renaming
+					string $plug[] = `listConnections -s 1 -d 0 -p 1 ($gShapes_bsNode + "." + $oldName)`;
+					if (size($plug))
+						disconnectAttr $plug[0] ($gShapes_bsNode + "." + $oldName);
+					
+					if (!$helper)
+						aliasAttr $newName ($gShapes_bsNode + "." + $oldName);
+					else
+					{
+						// group attributes need to be unlocked before they can be renamed
+						int $locked = `getAttr -l ($gShapes_bsNode + "." + $oldName)`;
+						if ($locked)
+							setAttr -l 0 ($gShapes_bsNode + "." + $oldName);
+						renameAttr ($gShapes_bsNode + "." + $oldName) $newName;
+						if ($locked)
+							setAttr -l 1 ($gShapes_bsNode + "." + $newName);
+					}
+				
+					if (size($plug))
+						connectAttr $plug[0] ($gShapes_bsNode + "." + $newName);
+				}
+				else
+				{
+					lockNode -l 0 $oldName;
+					string $temp = `rename $oldName $newName`;
+					if ($temp != $newName)
+					{
+						confirmDialog	-t ("Rename " + $mode) 
+										-m ("The name \"" + $newName + "\" already exists in the scene.\nPlease reload the mesh to display the corrected name.") 
+										-b "OK" 
+										-db "OK" 
+										-cb "OK" 
+										-ds "OK";
+					}
+					
+					$newName = $temp;
+					lockNode -l 1 $newName;
+				}
+				
+				// also store the new name in the global variables
+				$gShapes_selectedTarget = $newName;
+				dict_setValue($gShapes_bsData, $gShapes_index, "target", $newName);
+				int $id[] = shapesMain_getButtonDataIds({$oldName});
+				dict_setValue($gShapes_btnData, $id[0], "target", $newName);
+				
+				shapesMain_performRedefineParent 0 $newName $oldName;
+				
+				// apply the changes to the stored name on the blend shape node
+				// otherwise the order of the list will change because a new target name
+				// appears on the blend shape node but it's not present in the list
+				// and these channel names will be put at the end when being listed
+				//
+				// get the order stored on the blend shape node
+				string $storedOrder[] = stringToStringArray(`getAttr ($gShapes_bsNode + "." + "SHAPESShapes")`, ",");
+				string $storedParents[] = stringToStringArray(`getAttr($gShapes_bsNode + "." + "SHAPESParents")`, ",");
+				string $storedLabels[] = stringToStringArray(`getAttr($gShapes_bsNode + "." + "SHAPESLabels")`, ",");
+				string $storedRanges[] = stringToStringArray(`getAttr($gShapes_bsNode + "." + "SHAPESRanges")`, ",");
+				string $storedTimeRanges[] = stringToStringArray(`getAttr($gShapes_bsNode + "." + "SHAPESTimeRanges")`, ",");
+				int $index = shapesArray_stringArrayFind($oldName, 0, $storedOrder);
+				// replace the entry
+				$storedOrder[$index] = $newName;
+				// store the list
+				shapesMain_storeNewTargetOrder $storedOrder $storedParents $storedLabels $storedRanges $storedTimeRanges;
+				
+				// replace the alias name on the stored alias string on the blend shape node
+				string $aliasList[] = `aliasAttr -q $gShapes_bsNode`;
+				if (size($aliasList))
+					setAttr ($gShapes_bsNode + "." + "SHAPESAliases") -type "string" (stringArrayToString($aliasList, " "));
+				
+				string $queryPlug = shapesMain_getQueryPlug($newName);
+				
+				if (size(`listConnections -p 1 $queryPlug`))
+					shapesDriver_renameWeightDriver $newName;
+				
+				// update the slider to refresh the attached script job with the new attribute name
+				// if not updated there will be an attribute error when re-loading the script
+				// because the script job still refers to the old channel name
+				shapesMain_buildTargetSlider;
+			}
+		}
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// adding and removing targets
+// --------------------------------------------------------------------------------------------------
+
+global proc int shapesAction_findEmptyTargetIndex()
+{
+	//
+	// returns a valid index for adding a blendshape target
+	// finds orphan indices if targets have been deleted
+	//
+	global string $gShapes_bsData[];
+	
+	int $index = -1;
+	
+	// re-ordering the target list by the user also re-orders the bsData list
+	// the result is that we cannot simply go through the list and look
+	// which index is missing (in order to find orphan indices) because then
+	// the process will fail to find the right one
+	// instead, we first collect all real indices, sort them and then iterate
+	// through the list
+	//
+	// first collect all real indices of all targets
+	int $realId[];
+	for ($i = 0; $i < size($gShapes_bsData); $i ++)
+	{
+		// ignore all -1 indices from the helper attributes
+		if (dict_getStringValue($gShapes_bsData[$i], "index") != "-1")
+			$realId[size($realId)] = dict_getValue($gShapes_bsData[$i], "index");
+	}
+	$realId = sort($realId);
+	for ($i = 0; $i < size($realId); $i ++)
+	{
+		if ($i != $realId[$i] && $index == -1)
+			$index = $i;
+	}
+	if ($index == -1)
+		$index = size($gShapes_bsData);
+	return $index;
+}
+
+
+global proc int shapesAction_channelHasData( int $index )
+{
+	//
+	// returns true if the current blend shape channel has delta data stored
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_bsData[];
+	
+	if (size(`getAttr ($gShapes_bsNode + ".it[0].itg[" + $index + "].iti[6000].ict")`))
+		return 1;
+	
+	confirmDialog	-t "SHAPES" 
+					-m ("The blend shape target channel\n\n" + dict_getStringValue($gShapes_bsData[$index], "target") + " (weight[" + $index + "])\n\ncontains no data.") 
+					-b "OK";
+		
+	return 0;
+}
+
+
+global proc shapesAction_addSelectionAsTarget( int $extract, int $replace, int $merge )
+{
+	//
+	// lets the user add a new target with the given selection
+	// the merge option is used for updating the selected target
+	// based on the connected wrap mesh after transferring and tweaking
+	//
+	global int $gShapes_applyTarget;
+	global int $gShapes_index;
+	global int $gShapes_replaceMode;
+	global int $gShapes_targetIndex;
+	global string $gShapes_bsNode;
+	global string $gShapes_skinMesh;
+	global string $gShapes_bsData[];
+	
+	string $skinShape = shapesMain_getShapeNode();
+	if ($skinShape == "")
+		return;
+	
+	string $sel[];
+	if (!$merge)
+	{
+		$sel = shapesMain_verifySelection();
+		if (!size($sel))
+			return;
+		// check if the new target is not the skin mesh itself
+		if ($gShapes_skinMesh == $sel[0] || $gShapes_skinMesh == $sel[1])
+			error "Skin mesh and target object must not be the same geometry";
+		// check if the number of vertices match
+		int $verts1[] = `polyEvaluate -v $gShapes_skinMesh`;
+		int $verts2[] = `polyEvaluate -v $sel[0]`;
+		if ($verts1[0] != $verts2[0])
+			error "The new target shape has a different vertex count";
+		
+		if ($gShapes_bsNode == "None")
+			shapesAction_addBlendShapeNode 1;
+	}
+	else
+	{
+		// merge option after transfer of the blend shape setup
+		//
+		// perform the following steps:
+		// - duplicate the wrapped mesh to be able to find the differences between
+		//   the transferred skinning and the wrapped result
+		// - perform the delta extraction with the duplicate but without applying the result
+		// - extract the selected target shape
+		// - combine the two shapes
+		// - use the result of the combine to replace the selected target shape
+		if (!size(`treeView -q -si shpUI_targetTree`))
+			error "No target selected in the list";
+		
+		// make sure that the selected target is the only active channel
+		string $tgt = dict_getStringValue($gShapes_bsData[$gShapes_index], "target");
+		if (shapesUtil_verifyMultipleActiveChannels($tgt))
+			error "Unable to continue because multiple blend shape targets are active";
+		
+		string $wrapMesh = shapesMain_getWrapConnection();
+		if ($wrapMesh == "")
+			return;
+		
+		$sel = `duplicate $wrapMesh`;
+	}
+	
+	sets -e -fe initialShadingGroup $sel[0];
+	int $delete = !`optionVar -q SHAPESKeepSelectedMesh`;
+	
+	string $keepMesh[];
+	
+	if ($extract)
+	{
+		if ($replace)
+			$gShapes_replaceMode = 1;
+		if ($merge)
+			$gShapes_applyTarget = 0;
+		// if the mesh should be kept (except in update mode)
+		// duplicate the mesh because the extraction process deletes the mesh
+		if (!$delete && !$merge)
+			$keepMesh = `duplicate $sel[0]`;
+		shapesSculpt_exitSculptMode $gShapes_skinMesh $sel[0] {} "" "" 0 0;
+		
+		$gShapes_replaceMode = 0;
+		$gShapes_applyTarget = 1;
+	}
+	else
+	{
+		if ($merge)
+			$delete = 1;
+		if (!$replace)
+			shapesAction_addBlendShapeTarget $gShapes_skinMesh $sel[0] $delete;
+		else
+			shapesAction_replaceBlendShapeTarget $sel[0] "" -1 $gShapes_targetIndex $delete;
+	}
+	
+	// restore the name of the kept mesh
+	if (!$delete && !$merge)
+	{
+		if (size($keepMesh))
+			rename $keepMesh[0] $sel[0];
+	}
+	
+	if ($merge && shapesAction_channelHasData($gShapes_targetIndex))
+	{
+		// apply the merge process to the target and each inbetween, if any
+		string $values[] = dict_getValueArray($gShapes_bsData[$gShapes_index], "values");
+		for ($v in $values)
+		{
+			float $value = $v;
+			$value -= 5000;
+			string $extracted[] = shapesAction_extractTarget("", $value, 0, 0);
+			
+			string $result = shapesAction_duplicateOrginalMesh("");
+			// create a temporary blendshape for the combined result
+			string $tempBS[] = `blendShape $sel[0] $extracted[0] $result`;
+			blendShape -e -w 1 1 $tempBS[0];
+	
+			// apply the result as a new target
+			shapesAction_replaceBlendShapeTarget $result "" $value $gShapes_targetIndex 1;
+		
+			// delete the extracted shapes
+			delete $extracted[0];
+		}
+		// finally delete the wrap duplicate
+		delete $sel[0];
+	}
+	
+	// reset the menu items in case an inbetween was added
+	shapesUI_toggleAddNewTargetItemLabel 0;
+}
+
+
+global proc shapesAction_addBlendShapeTarget( string $skin, string $corrective, int $delete )
+{
+	//
+	// called when exiting the sculpt mode
+	// add the sculpted mesh as a target
+	//
+	global int $gShapes_targetIndex;
+	global string $gShapes_bsNode;
+	global string $gShapes_inbetweenSlider;
+	global string $gShapes_selectedTarget;
+	
+	float $position = 1.0;
+	string $inbetweenFlag;
+	int $index = shapesAction_findEmptyTargetIndex();
+	
+	// check if the corrective should be used as an inbetween
+	if ($gShapes_inbetweenSlider != "")
+	{
+		$position = `floatSliderGrp -q -v $gShapes_inbetweenSlider`;
+		$inbetweenFlag = "-ib ";
+		$index = $gShapes_targetIndex;
+	}
+	
+	// add the target to the blendshape node
+	eval ("blendShape -e " + $inbetweenFlag + "-tc 1 -t " + $skin + " " + $index + " " + $corrective + " " + $position + " " + $gShapes_bsNode);
+	
+	// store the inbetween slider if it exists;
+	// the slider is important for storing the compare range but it gets cleared
+	// whenever a new target gets selected in the list;
+	// the storing of the compare range could be moved here but at this point the
+	// new shape hasn't yet been added to the bsData list and the storing of the
+	// compare range needs to read the data list
+	string $inbetweenSlider = $gShapes_inbetweenSlider;
+	
+	// add the weight driver
+	if ($gShapes_inbetweenSlider == "" && `optionVar -q SHAPESAutoAddShapeDriver`)
+		shapesDriver_createWeightDriver $corrective 0 0;
+	
+	// select the new target
+	if ($gShapes_inbetweenSlider != "")
+	{
+		// refresh the target list
+		shapesMain_listBlendShapeTargets 1;
+	}
+	else
+	{
+		shapesMain_autoOrderNewTarget $corrective $gShapes_selectedTarget 1 0;
+		$gShapes_selectedTarget = $corrective;
+		// refresh the target list
+		shapesMain_listBlendShapeTargets 1;
+	}
+	
+	// store the time range information
+	$gShapes_inbetweenSlider = $inbetweenSlider;
+	shapesSculpt_storeCompareRange $corrective;
+	$gShapes_inbetweenSlider = "";
+	
+	// delete the sculpted mesh
+	if ($delete)
+		delete $corrective;
+	
+	// clear the inbetweenSlider name
+	$gShapes_inbetweenSlider = "";
+}
+
+
+global proc shapesAction_replaceBlendShapeTarget( string $target, string $slider, float $inbetweenVal, int $index, int $delete )
+{
+	//
+	// connect the new target mesh with an existing blendshape channel
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_skinMesh;
+	
+	float $position = shapesAction_getSliderValueAsInt($slider);
+	
+	if ($inbetweenVal != -1)
+		$position = $inbetweenVal;
+	
+	// check if the target has incoming connections from an existing blendshape mesh in the scene
+	string $inputMesh[] = `listConnections ($gShapes_bsNode + ".it[0].itg[" + $index + "].iti[" + (5000 + $position) + "].igt")`;
+	if (size($inputMesh))
+	{
+		disconnectAttr ($inputMesh[0] + ".worldMesh[0]") ($gShapes_bsNode + ".it[0].itg[" + $index + "].iti[" + (5000 + $position) + "].igt");
+		warning ($inputMesh[0] + " has been disconnected from " + $gShapes_bsNode + " to be able to insert the sculpt result.");
+	}
+	
+	string $intermediate = shapesMain_getOriginalMesh($gShapes_skinMesh, 0);
+	string $targetShape[] = `listRelatives -s -ni $target`;
+	
+	br_blendShapeReplaceTarget -n $gShapes_bsNode -m $targetShape[0] -om $intermediate -i $index -v ($position / 1000.0);
+	
+	// store the time range information
+	shapesSculpt_storeCompareRange $gShapes_selectedTarget;
+	
+	// delete the target mesh
+	if ($delete)
+		delete $target;
+}
+
+
+global proc shapesAction_removeBlendShapeTarget( int $inbetweenIndex, int $helper, int $drivenSet )
+{
+	//
+	// deletes the blendshape targets or inbetweens
+	//
+	global int $gShapes_channelsActive;
+	global int $gShapes_drivenSetProcess;
+	global int $gShapes_index;
+	global int $gShapes_splitProcess;
+	global int $gShapes_targetIndex;
+	global string $gShapes_currentChannelSlider;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_bsData[];
+	
+	if (!$gShapes_channelsActive)
+	{
+		warning "Edit Mode is currently active";
+		return;
+	}
+	
+	if ($gShapes_splitProcess)
+	{
+		warning "Unable to delete the channel while splitting shapes";
+		return;
+	}
+	
+	if ($gShapes_drivenSetProcess)
+	{
+		warning "Unable to delete the channel while tweaking the driven set value";
+		return;
+	}
+	
+	string $msg = "Delete in-between shape?";
+	if ($inbetweenIndex == 0)
+		$msg = "Delete target shape?";
+	if ($helper)
+		$msg = "Delete helper attribute?";
+	if ($drivenSet)
+		$msg = "Delete driven set?";
+	
+	if (`optionVar -q SHAPESConfirmDeleteTarget`)
+	{
+		if (!shapesGlobal_confirmWindow($msg, "Delete"))
+			return;
+	}
+	
+	int $nIds[] = shapesMain_getShapeIds(1, {});
+	int $ids[] = shapesMain_getShapeIds(0, {});
+	
+	if (!$drivenSet)
+	{
+		if ($inbetweenIndex == 0)
+		{
+			// delete the weights
+			shapesWeights_removeShapeWeights 0 {};
+			for ($n = 0; $n < size($nIds); $n ++)
+			{
+				int $helper = dict_getBoolValue($gShapes_bsData[$ids[$n]], "helper");
+				shapesAction_performRemoveBlendShapeTarget $nIds[$n] $ids[$n] $inbetweenIndex $helper;
+			}
+		}
+		// perform only once when an in-between should be deleted
+		else
+			shapesAction_performRemoveBlendShapeTarget $gShapes_targetIndex $gShapes_index $inbetweenIndex $helper;
+	}
+	else
+	{
+		for ($id in $ids)
+			shapesSet_removeSet $id;
+	}
+	
+	// focus on the list item above the first selected target
+	// focussing happens after refreshing the list
+	if ($ids[0] > 0)
+		$gShapes_selectedTarget = dict_getStringValue($gShapes_bsData[$ids[0] - 1], "target");
+	
+	// if the currently removed target turns out to be the focus item
+	// set $gShapes_selectedTarget to nothing to avoid any errors because the item has been deleted
+	// errors occues when there are only two items in the list and the first is deleted
+	string $tgt = dict_getStringValue($gShapes_bsData[$gShapes_index], "target");
+	if ($tgt == $gShapes_selectedTarget && $inbetweenIndex == 0)
+		$gShapes_selectedTarget = "";
+	
+	// refresh the target list
+	shapesMain_listBlendShapeTargets 1;
+	
+	if ($inbetweenIndex == 0)
+	{
+		string $items[] = `treeView -q -ch "" shpUI_targetTree`;
+		if ($items[0] == "No shapes")
+		{
+			// clear the blendshape data
+			clear $gShapes_bsData;
+			$gShapes_currentChannelSlider = "";
+		}
+	}
+}
+
+
+global proc shapesAction_performRemoveBlendShapeTarget( int $nodeIndex, int $listIndex, int $inbetweenIndex, int $helper )
+{
+	//
+	// delete the blendshape target or inbetween
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_bsData[];
+	
+	string $targetItem[];
+	$targetName = dict_getStringValue($gShapes_bsData[$listIndex], "target");
+	if ($inbetweenIndex == 0)
+	{
+		// delete the connected combo
+		if (!shapesCombo_removeCombo($targetName, 1))
+			return;
+		
+		// delete the connected weight driver
+		shapesDriver_deleteWeightDriver $targetName;
+		
+		// delete any connected animation curve
+		string $animCurve[] = `listConnections -type "animCurve" ($gShapes_bsNode + "." + $targetName)`;
+		if (size($animCurve))
+			delete $animCurve;
+	
+		// delete all child controls of the slider frame
+		// the base slider is still connected to the target weight
+		// if not disconnected before deleting an empty "weight[0]" attribute remains
+		// delete the slider because there is no disconnect command
+		shapesMain_removeAllTargetSlider "shpUI_sliderFrame";
+		
+		$targetItem = dict_getValueArray($gShapes_bsData[$listIndex], "values");
+	}
+	else
+	{
+		string $items[] = dict_getValueArray($gShapes_bsData[$listIndex], "values");
+		$targetItem[size($targetItem)] = $items[$inbetweenIndex];
+	}
+	
+	if (!$helper)
+	{
+		string $cmd = "";
+		// if the entire target should be removed also delete the alias attr
+		// and all related array attributes;
+		// the removal needs to be done from leaf levels to parent levels in order
+		// to clean everything correctly
+		
+		if ($inbetweenIndex == 0)
+		{
+			// delete the weight
+			// for some reason this has to happen first (since Maya 2016)
+			$cmd += "removeMultiInstance -b 1 " + $gShapes_bsNode + ".w[" + $nodeIndex + "];\n";
+		}
+		
+		for ($ti in $targetItem)
+			$cmd += "removeMultiInstance -b 1 " + $gShapes_bsNode + ".it[0].itg[" + $nodeIndex + "].iti[" + $ti + "];\n";
+	
+		// if the entire target should be removed also delete the alias attr
+		if ($inbetweenIndex == 0)
+		{
+			// delete the target group
+			$cmd += "removeMultiInstance -b 1 " + $gShapes_bsNode + ".it[0].itg[" + $nodeIndex + "];\n";
+			
+			// delete the alias attribute
+			$cmd += "aliasAttr -rm " + $gShapes_bsNode + "." + $targetName + ";\n";
+		}
+		//print $cmd;
+		eval $cmd;
+		
+		if ($inbetweenIndex != 0)
+		{
+			for ($ti in $targetItem)
+				shapesSculpt_removeReplaceCompareRangeInbetweenItem $listIndex $ti -1;
+		}
+	}
+	else
+	{
+		setAttr -l 0 ($gShapes_bsNode + "." + $targetName);
+		deleteAttr ($gShapes_bsNode + "." + $targetName);
+	}
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// additional target functions
+// --------------------------------------------------------------------------------------------------
+
+global proc int shapesAction_getSliderValueAsInt( string $slider )
+{
+	//
+	// return the slider value as a blend shape target position value
+	//
+	float $position = 1.0;
+	if ($slider != "" && `floatSliderGrp -q -l $slider` != "Base")
+		$position = `floatSliderGrp -q -v $slider`;
+	$position = shapesDriver_roundFloat($position, 3) * 1000;
+	return $position;
+}
+
+
+global proc string shapesAction_extractTargetByName( string $target, float $inbetweenVal )
+{
+	//
+	// extracts the given target shape based on the name
+	// rather than the current target index
+	//
+	global int $gShapes_index;
+	global int $gShapes_targetIndex;
+	global string $gShapes_bsData[];
+	
+	string $extractDict;
+	
+	// store the global indices to set them back afterwards
+	int $tempTargetIndex = $gShapes_targetIndex;
+	int $tempIndex = $gShapes_index;
+	
+	for ($index = 0; $index < size($gShapes_bsData); $index ++)
+	{
+		$gShapes_targetIndex = dict_getValue($gShapes_bsData[$index], "index");
+		if (dict_getStringValue($gShapes_bsData[$index], "target") == $target && shapesAction_channelHasData($gShapes_targetIndex))
+		{
+			$gShapes_index = $index;
+			string $extracted[] = shapesAction_extractTarget("", $inbetweenVal, 0, 0);
+			$extractDict = "{'target': '" + $extracted[0] + "', 'index': " + $gShapes_targetIndex + "}";
+		}
+	}
+	
+	// reset the global indices
+	$gShapes_targetIndex = $tempTargetIndex;
+	$gShapes_index = $tempIndex;
+	
+	if ($extractDict == "")
+		error ($target + " cannot be found in the target list");
+	
+	return $extractDict;
+}
+
+
+global proc string[] shapesAction_extractTarget( string $slider, float $inbetweenVal, int $show, int $multi )
+{
+	//
+	// extract the given blendshape target by index and value (for inbetweens)
+	// and build a new mesh from it
+	//
+	global int $gShapes_index;
+	global int $gShapes_targetIndex;
+	global string $gShapes_bsNode;
+	global string $gShapes_skinMesh;
+	global string $gShapes_bsData[];
+	global string $gShapes_exportConnection[];
+	global string $gShapes_rebuildConnection[];
+	
+	if (!shapesAction_channelHasData($gShapes_targetIndex))
+		return {};
+			
+	float $value = 1.0;
+	if ($slider != "")
+	{
+		if (`floatSliderButtonGrp -q -l $slider` != "Base")
+		{
+			$value = `floatSliderButtonGrp -q -v $slider`;
+		}
+	}
+	$value = shapesDriver_roundFloat($value, 3) * 1000;
+	
+	if ($inbetweenVal != -1)
+		$value = $inbetweenVal;
+	
+	// check if a mesh is still connected to the target channel
+	// need to disconnect to get the point data from the channel
+	string $connect[] = `listConnections -p 1 ($gShapes_bsNode + ".it[0].itg[" + $gShapes_targetIndex + "].iti[" + (5000 + $value) + "].igt")`;
+	if (size($connect))
+	{
+		string $items[];
+		tokenize $connect[0] "." $items;
+		string $long[] = `ls -l $items[0]`;
+		$items[0] = $long[0];
+		$connect[0] = stringArrayToString($items, ".");
+		disconnectAttr $connect[0] ($gShapes_bsNode + ".it[0].itg[" + $gShapes_targetIndex + "].iti[" + (5000 + $value) + "].igt");
+		$gShapes_exportConnection[size($gShapes_exportConnection)] = $connect[0];
+		$gShapes_exportConnection[size($gShapes_exportConnection)] = $gShapes_bsNode + ".it[0].itg[%index].iti[" + (5000 + $value) + "].igt";
+		$gShapes_rebuildConnection[size($gShapes_rebuildConnection)] = $connect[0];
+		$gShapes_rebuildConnection[size($gShapes_rebuildConnection)] = $gShapes_bsNode + ".it[0].itg[%index].iti[" + (5000 + $value) + "].igt";
+	}
+	
+	// get the name of the target to be extracted
+	string $target = dict_getStringValue($gShapes_bsData[$gShapes_index], "target");
+	string $intermediate = shapesMain_getOriginalMesh($gShapes_skinMesh, 0);
+	string $extractedShape[];
+	if (!$multi)
+		$extractedShape = `br_blendShapeExtractTarget -n $gShapes_bsNode -om $intermediate -i $gShapes_targetIndex -v ($value / 1000.0)`;
+	else
+		$extractedShape = `br_blendShapeExtractTarget -n $gShapes_bsNode -om $intermediate -i $gShapes_targetIndex -v -1`;
+	
+	if (size($connect))
+		connectAttr -f $connect[0] ($gShapes_bsNode + ".it[0].itg[" + $gShapes_targetIndex + "].iti[" + (5000 + $value) + "].igt");
+	
+	for ($i = 0; $i < size($extractedShape); $i ++)
+	{
+		string $items[];
+		tokenize $extractedShape[$i] "_" $items;
+		string $positionString = $target;
+		if (size($extractedShape) > 1 || $items[size($items) - 1] != "6000")
+			$positionString += "_" + $items[size($items) - 1];
+		$extractedShape[$i] = `rename $extractedShape[$i] $positionString`;
+		
+		// if the extraction command comes from the extract button make the mesh visible
+		setAttr ($extractedShape[$i] + ".v") $show;
+	}
+	
+	return $extractedShape;
+}
+
+
+global proc shapesAction_mergeSwapShapes( int $merge )
+{
+	//
+	// combine two targets into one and add it to the target list
+	//
+	global int $gShapes_clearSliderFrame;
+	global int $gShapes_index;
+	global int $gShapes_targetIndex;
+	global string $gShapes_bsNode;
+	global string $gShapes_previousTarget;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_skinMesh;
+	global string $gShapes_bsData[];
+	
+	// store the global indices to set them back afterwards
+	int $tempTargetIndex = $gShapes_targetIndex;
+	int $tempIndex = $gShapes_index;
+	$gShapes_previousTarget = $gShapes_selectedTarget;
+	
+	string $shapeList[];
+	string $weightList[];
+	int $indexList[];
+	
+	string $items[] = `treeView -q -si shpUI_targetTree`;
+	treeView -e -cs shpUI_targetTree;
+	float $weightSum;
+	for ($i = 0; $i < size($items); $i ++)
+	{
+		for ($index = 0; $index < size($gShapes_bsData); $index ++)
+		{
+			if (dict_getStringValue($gShapes_bsData[$index], "target") == $items[$i])
+				$gShapes_index = $index;
+		}
+		
+		$gShapes_targetIndex = dict_getValue($gShapes_bsData[$gShapes_index], "index");
+		if (shapesAction_channelHasData($gShapes_targetIndex))
+		{
+			// add to the list of shapes
+			string $extracted[] = shapesAction_extractTarget("", -1, 0, 0);
+			$shapeList[size($shapeList)] = $extracted[0];
+			$shapeList[$i] = `rename $shapeList[$i] (substitute("_extracted", $shapeList[$i], ""))`;
+			// add to the list for setting the target weights
+			float $weight = `getAttr ($gShapes_bsNode + "." + $items[$i])`;
+			$weightSum += abs($weight);
+			$weightList[size($weightList)] = "-w " + $i + " " + $weight;
+			$indexList[size($indexList)] = dict_getValue($gShapes_bsData[$gShapes_index], "index");
+		}
+	}
+	
+	// set the global indices back
+	$gShapes_targetIndex = $tempTargetIndex;
+	$gShapes_index = $tempIndex;
+	
+	if ($merge && $weightSum == 0)
+	{
+		delete $shapeList;
+		error "The selected shapes have no active weights to merge";
+	}
+	
+	if (!$merge && size($shapeList) != 2)
+	{
+		delete $shapeList;
+		error "Select two shapes to swap the target data";
+	}
+	
+	$gShapes_clearSliderFrame = 0;
+	
+	if ($merge)
+	{
+		string $result = shapesAction_duplicateOrginalMesh(stringArrayToString($shapeList, "_") + "_merged");
+		$result = `rename $result (substitute("_extracted", $result, ""))`;
+		// create a temporary blendshape for the combined result
+		string $tempBS[] = `blendShape $shapeList $result`;
+		string $cmd = "blendShape -e " + stringArrayToString($weightList, " ") + " " + $tempBS[0];
+		eval $cmd;
+		
+		// apply the result as a new target
+		string $skin = $gShapes_skinMesh;
+		shapesAction_addBlendShapeTarget $gShapes_skinMesh $result 1;
+		
+		// delete the extracted shapes
+		delete $shapeList;
+	}
+	else
+	{
+		shapesAction_replaceBlendShapeTarget $shapeList[0] "" -1 $indexList[1] 1;
+		shapesAction_replaceBlendShapeTarget $shapeList[1] "" -1 $indexList[0] 1;
+	}
+	
+	// re-select the previous target
+	treeView -e -cs shpUI_targetTree;
+	treeView -e -si $gShapes_previousTarget 1 shpUI_targetTree;
+	$gShapes_clearSliderFrame = 1;
+}
+
+
+global proc string shapesAction_duplicateSelectedChannel( string $name )
+{
+	//
+	// copies the selected channel to a new
+	//
+	global int $gShapes_clearSliderFrame;
+	global string $gShapes_bsNode;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_skinMesh;
+	
+	int $index = shapesAction_findEmptyTargetIndex();
+	
+	// get the target and all inbetweens
+	string $items[] = shapesMain_getChannelSliderList();
+	
+	string $targetIds[] = {"6000," + $items[0]};
+	for ($i = 1; $i < size($items); $i ++)
+	{
+		int $value = `floatSliderButtonGrp -q -v $items[$i]` * 1000 + 5000;
+		$targetIds[size($targetIds)] = $value + "," + $items[$i];
+	}
+	$targetIds = sort($targetIds);
+	// reverse the target list to list the base target before the inbetweens
+	string $temp[];
+	for ($r = size($targetIds) - 1; $r >= 0; $r --)
+		$temp[size($temp)] = $targetIds[$r];
+	$targetIds = $temp;
+	
+	string $channelName;
+	
+	string $inbetweenFlag;
+	string $target;
+	for ($item in $targetIds)
+	{
+		string $data[] = stringToStringArray($item, ",");
+		string $id = $data[0];
+		string $slider = $data[1];
+		string $extracted[];
+		if ($id == "6000")
+			$extracted = shapesAction_extractTarget("", -1, 0, 0);
+		else
+			$extracted = shapesAction_extractTarget($slider, -1, 0, 0);
+		$target = $extracted[0];
+		
+		if ($target != "")
+		{
+			if ($name == "")
+				$target = `rename $target (substitute("_extracted", $target, "") + "_copy")`;
+			else
+				$target = `rename $target $name`;
+		
+			// store the name of the first target which will be the name of the channel
+			// this is necessary for ordering the list
+			if ($channelName == "")
+			{
+				// check if the target name already exists
+				// in case it does exist add an increment number to make it unique
+				// without this check duplicating a shape twice results in a different target name
+				// for the second duplicate but SHAPES would not be aware of this
+				// this results in an un-incremented target name for the internal lists
+				// and leads to errors
+				// the solution is to check for an existing attribute name and create in increment
+				// prior to adding the target
+				int $exists = 1;
+				string $inc = "";
+				while ($exists)
+				{
+					if (`attributeQuery -n $gShapes_bsNode -ex ($target + $inc)`)
+					{
+						if ($inc == "")
+							$inc = "1";
+						else
+						{
+							int $incNum = $inc;
+							$inc = $incNum + 1;
+						}
+					}
+					else
+						$exists = 0;
+				}
+				$channelName = $target + $inc;
+			}
+		
+			// add the target to the blendshape node
+			int $idNum = $id;
+			float $value = ($idNum - 5000) / 1000.0;
+			eval ("blendShape -e " + $inbetweenFlag + "-t " + $gShapes_skinMesh + " " + $index + " " + $target + " " + $value + " " + $gShapes_bsNode);
+			$inbetweenFlag = "-ib ";
+			delete $target;
+		}
+	}
+	
+	$gShapes_clearSliderFrame = 0;
+	shapesMain_autoOrderNewTarget $channelName $gShapes_selectedTarget 1 1;
+	shapesMain_listBlendShapeTargets 1;
+	$gShapes_clearSliderFrame = 1;
+	
+	return $target;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// in-betweens
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesAction_changeInbetweenPercent( int $inbetweenIndex, float $sliderVal )
+{
+	//
+	// shift an inbetween target to the given newPercent value
+	//
+	global int $gShapes_index;
+	global int $gShapes_targetIndex;
+	global int $gShapes_updateValueState;
+	global string $gShapes_bsNode;
+	global string $gShapes_bsData[];
+	
+	// disable the live update of the channel value display
+	// when dragging the in-between slider
+	$gShapes_updateValueState = 0;
+	
+	float $rounded = shapesDriver_roundFloat($sliderVal, 3);
+	int $newPercent = 5000 + $rounded * 1000;
+	string $values[] = dict_getValueArray($gShapes_bsData[$gShapes_index], "values");
+	// check if the new value already exists with another inbetween
+	if (shapesArray_stringArrayFind($newPercent, 0, $values) == 1)
+		return;
+	
+	int $oldPercent = $values[$inbetweenIndex];
+	
+	int $result = `br_blendShapeSetInbetweenPosition -n $gShapes_bsNode -i $gShapes_targetIndex -sp $oldPercent -tp $newPercent`;
+	
+	if ($result)
+	{
+		$values[$inbetweenIndex] = $newPercent;
+		dict_setArrayValue($gShapes_bsData, $gShapes_index, "values", shapesArray_stringArrayToFloatArray($values));
+	
+		// redefine the button commands for setting the target value
+		string $items[] = shapesMain_getChannelSliderList();
+		string $targetItem = dict_getStringValue($gShapes_bsData[$gShapes_index], "target");
+		floatSliderButtonGrp -e -bl "Set" -bc ("shapesJob_sliderButtonCommand " + $gShapes_bsNode + "." + $targetItem + " " + $sliderVal) $items[$inbetweenIndex];
+		
+		shapesSculpt_removeReplaceCompareRangeInbetweenItem $gShapes_index $oldPercent $newPercent;
+	}
+}
+
+
+global proc shapesAction_createBlendShapeProgressiveInbetweens()
+{
+	global int $gShapes_targetIndex;
+	global string $gShapes_bsNode;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_skinMesh;
+	
+	if ($gShapes_selectedTarget == "")
+		return;
+	
+	string $path;
+	if (`optionVar -ex SHAPESProgressiveInbetweensPath` && `optionVar -q SHAPESProgressiveInbetweensPath` != "")
+		$path = `optionVar -q SHAPESProgressiveInbetweensPath`;
+	else
+		$path = `workspace -q -rd`;
+	
+	string $filePath[] = `fileDialog2 -dir $path -fm 3 -okc "Select" -cap "Select Sequence Folder"`;
+	if (!size($filePath))
+		return;
+	
+	optionVar -sv SHAPESProgressiveInbetweensPath $filePath[0];
+	
+	string $fileList[] = `getFileList -fld $filePath[0]`;
+	
+	int $fileCount = 0;
+	for ($file in $fileList)
+	{
+		if (!startsWith($file, "."))
+			$fileCount ++;
+	}
+	
+	float $step = (1000 / ($fileCount + 1)) / 1000.0;
+	float $value = $step;
+	
+	setAttr ($gShapes_bsNode + "." + $gShapes_selectedTarget) 1;
+	shapesWeights_paintShapeWeights;
+	
+	for ($file in $fileList)
+	{
+		if (!startsWith($file, "."))
+		{
+			artAttrCtx -e -importfileload ($filePath[0] + "/" + $file) `currentCtx`;
+			string $shape = shapesAction_duplicateMeshFromMenu(0, 0);
+			eval ("blendShape -e -ib -tc 1 -t " + $gShapes_skinMesh + " " + $gShapes_targetIndex + " " + $shape + " " + $value + " " + $gShapes_bsNode);
+			delete $shape;
+			shapesWeights_removeShapeWeights 0 {$gShapes_selectedTarget};
+			select -r $gShapes_skinMesh;
+			$value += $step;
+		}
+	}
+	
+	shapesWeights_exitPaintShapeWeights;
+	
+	shapesMain_listBlendShapeTargets 1;
+}
+
+
+// --------------------------------------------------------------------------------------------------
+// split shape
+// --------------------------------------------------------------------------------------------------
+
+global proc shapesAction_manageSplitShapeFrame( int $active )
+{
+	//
+	// create/delete the split shape ui
+	//
+	global int $gShapes_splitProcess;
+	global string $gShapes_bsNode;
+	global string $gShapes_currentChannelSlider;
+	global string $gShapes_previousTarget;
+	global string $gShapes_selectedTarget;
+	global string $gShapes_skinMesh;
+	global string $gShapes_splitOriginal;
+	global string $gShapes_splitData[];
+	
+	frameLayout -e -cl (!$active) -m $active shpUI_splitShapeFrame;
+	
+	if ($active)
+	{
+		$gShapes_splitProcess = 1;
+		
+		$gShapes_previousTarget = $gShapes_selectedTarget;
+		
+		string $geo[] = shapesAction_initSplitShape();
+		
+		$gShapes_splitOriginal = shapesMain_getOriginalMesh($gShapes_skinMesh, 1);
+		
+		// store the real target indices for the two new split shapes
+		// for the splitting process
+		int $ids[] = shapesMain_getShapeIds(1, $geo);
+		string $id1 = $ids[0];
+		string $id2 = $ids[1];
+		$gShapes_splitData = {$id1, $id2, $geo[0], $geo[1]};
+		
+		// get the bounding box
+		float $bbox[] = `xform -q -bb $gShapes_skinMesh`;
+		
+		// get the previous split slider values if they exist
+		float $blendVal = `optionVar -q SHAPESSplitBlendSlider`;
+		float $centerVal = `optionVar -q SHAPESSplitCenterSlider`;
+		
+		setParent shpUI_splitShapeFrame;
+			floatSliderGrp	-l "Blend" 
+							-f 1 
+							-v $blendVal 
+							-min 0.0 
+							-max (abs($bbox[0])) 
+							-pre 2 
+							-cw3 65 60 100 
+							-co3 0 5 5 
+							-ct3 "left" "both" "right" 
+							-dc ("shapesAction_splitShape " + $gShapes_bsNode + " " + $gShapes_splitOriginal + " 1 0 0 0 " + $gShapes_splitData[0]) 
+							-cc ("shapesAction_splitShape " + $gShapes_bsNode + " " + $gShapes_splitOriginal + " 1 0 0 0 " + $gShapes_splitData[0]) 
+							shpUI_splitBlendSlider;
+			floatSliderGrp	-l "Center" 
+							-f 1 
+							-v $centerVal 
+							-min (abs($bbox[0]) / -2) 
+							-max (abs($bbox[0]) / 2) 
+							-pre 2 
+							-cw3 65 60 100 
+							-co3 0 5 5 
+							-ct3 "left" "both" "right" 
+							-dc ("shapesAction_splitShape " + $gShapes_bsNode + " " + $gShapes_splitOriginal + " 1 0 0 0 " + $gShapes_splitData[0]) 
+							-cc ("shapesAction_splitShape " + $gShapes_bsNode + " " + $gShapes_splitOriginal + " 1 0 0 0 " + $gShapes_splitData[0]) 
+							shpUI_splitCenterSlider;
+		
+			button -l "Commit Shapes" -c ("shapesAction_manageSplitShapeFrame 0");
+		setParent ..;
+		
+		// deactivate all items from the channels popup menu
+		shapesMain_managePopupMenuItems "shpUI_channelPopUp" 0;
+		
+		// disable the slider frame
+		// the sliders have no use anyway because of the current split process
+		// also they don't represent the correct channels since they haven't been updated
+		frameLayout -e -cl 1 shpUI_sliderFrame;
+		frameLayout -e -en 0 shpUI_sliderFrame;
+		
+		shapesAction_splitShape $gShapes_bsNode $gShapes_splitOriginal 1 0 0 0 $gShapes_splitData[0];
+	}
+	else
+	{
+		// apply the split to the right side
+		shapesAction_splitShape $gShapes_bsNode $gShapes_splitOriginal -1 0 0 0 $gShapes_splitData[1];
+		
+		// save the values for the next splitting process
+		float $blendVal = `floatSliderGrp -q -v shpUI_splitBlendSlider`;
+		float $centerVal = `floatSliderGrp -q -v shpUI_splitCenterSlider`;
+		optionVar -fv SHAPESSplitBlendSlider $blendVal;
+		optionVar -fv SHAPESSplitCenterSlider $centerVal;
+		// the saved values get get cleared when a new mesh is loaded
+		
+		shapesMain_removeAllTargetSlider "shpUI_splitShapeFrame";
+		
+		// activate all items from the channels popup menu
+		shapesMain_managePopupMenuItems "shpUI_channelPopUp" 1;
+		
+		$gShapes_splitProcess = 0;
+		$gShapes_currentChannelSlider = "";
+		
+		// enable the slider frame
+		frameLayout -e -en 1 shpUI_sliderFrame;
+		frameLayout -e -cl 0 shpUI_sliderFrame;
+		
+		shapesWeights_freezeShapeWeights {$gShapes_splitData[2], $gShapes_splitData[3]};
+		
+		// disable the new target shapes
+		setAttr ($gShapes_bsNode + "." + $gShapes_splitData[2]) 0;
+		setAttr ($gShapes_bsNode + "." + $gShapes_splitData[3]) 0;
+		
+		// re-select the previous target
+		treeView -e -cs shpUI_targetTree;
+		treeView -e -si $gShapes_previousTarget 1 shpUI_targetTree;
+		
+		clear $gShapes_splitData;
+		$gShapes_splitOriginal = "";
+		$gShapes_previousTarget = "";
+		
+		shapesMain_buildTargetSlider;
+	}
+}
+
+
+global proc string[] shapesAction_initSplitShape()
+{
+	//
+	// extract the original and the target to split and setup the blendshapes to
+	// interactively control the splitting process
+	//
+	global string $gShapes_bsNode;
+	global string $gShapes_selectedTarget;
+	
+	// turn off the source target
+	setAttr ($gShapes_bsNode + "." + $gShapes_selectedTarget) 0;
+	
+	string $rightShape = shapesAction_duplicateSelectedChannel("R_" + $gShapes_selectedTarget);
+	string $leftShape = shapesAction_duplicateSelectedChannel("L_" + $gShapes_selectedTarget);
+	
+	treeView -e -si $leftShape 1 -shi $leftShape shpUI_targetTree;
+	setAttr ($gShapes_bsNode + "." + $leftShape) 1;
+	
+	return {$leftShape, $rightShape};
+}
+
+
+global proc shapesAction_splitShape( string $bsNode, string $original, int $invert, int $hasValues, float $blendVal, float $centerVal, int $index )
+{
+	//
+	// splits a shape at it's center defined by a center and blend width value
+	//
+	if (!$hasValues)
+	{
+		$blendVal = `floatSliderGrp -q -v shpUI_splitBlendSlider`;
+		$centerVal = `floatSliderGrp -q -v shpUI_splitCenterSlider`;
+	}
+	
+	// use the general mirror tolerance as the base
+	// for finding the vertices at the line of symmetry
+	float $tolerance = (`optionVar -q SHAPESMirrorToleranceValue`) * 0.1;
+	
+	string $axis = shapesMirror_mirrorAxisString();
+	
+	br_blendShapeSplitTarget	-axis $axis 
+								-invert $invert 
+								-blend $blendVal 
+								-center $centerVal 
+								-index $index 
+								-node $bsNode 
+								-originalMesh $original 
+								-tolerance $tolerance;
+}
+
+
+global proc SHAPES_actions(){}
