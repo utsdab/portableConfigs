@@ -1,0 +1,28 @@
+//Maya Preference 2016 (Release 1)
+//
+//
+windowPref -topLeftCorner 94 86 -widthHeight 366 702 -maximized false outlinerPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false hyperGraphPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 660 400 -maximized false graphEditor1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 660 400 -maximized false dopeSheetPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 660 400 -maximized false clipEditorPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 524 470 -maximized false devicePanel1Window;
+windowPref -topLeftCorner 75 75 -widthHeight 1440 900 -maximized false hyperShadePanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false dynPaintScriptedPanelWindow;
+windowPref -topLeftCorner 250 200 -widthHeight 550 562 -maximized false blindDataEditor1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 1120 640 -maximized false polyTexturePlacementPanel1Window;
+windowPref -topLeftCorner 40 9 -widthHeight 1425 1039 -maximized false MayaWindow;
+windowPref -topLeftCorner 180 144 -widthHeight 1383 602 -maximized false scriptEditorPanel1Window;
+windowPref -topLeftCorner 415 642 -widthHeight 557 717 -maximized false shelfEditor;
+windowPref -topLeftCorner 567 564 -widthHeight 775 254 -maximized false dpInfoWindow;
+windowPref -topLeftCorner 415 642 -widthHeight 305 250 -maximized false dpColorIndexWindow;
+windowPref -topLeftCorner 415 642 -widthHeight 314 350 -maximized false dpTargetMirrorWindow;
+windowPref -topLeftCorner 415 642 -widthHeight 300 200 -maximized false sqStickyLipsWindow;
+windowPref -topLeftCorner 415 642 -widthHeight 205 50 -maximized false dpIkFkSnapWindow;
+windowPref -topLeftCorner 415 642 -widthHeight 248 75 -maximized false jdsWnd;
+windowPref -topLeftCorner 415 642 -widthHeight 778 643 -maximized false RRM_Window;
+windowPref -topLeftCorner 415 642 -widthHeight 280 192 -maximized false SHAPESConnectBlendShapeNodesWin;
+windowPref -topLeftCorner 415 642 -widthHeight 503 668 -maximized false SHAPESPrefsWin;
+windowPref -topLeftCorner 415 642 -widthHeight 450 320 -maximized false NewFeatureHighlightWnd;
+windowPref -topLeftCorner 415 642 -widthHeight 550 411 -maximized false pluginManagerWindow;
+windowPref -topLeftCorner 210 390 -widthHeight 665 500 -maximized false PreferencesWindow;
