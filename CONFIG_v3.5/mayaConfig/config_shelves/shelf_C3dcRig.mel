@@ -1,0 +1,741 @@
+global proc shelf_C3dcRig () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Match Orient Position" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "PointConstraint;\nperformPointConstraint 0;\npointConstraint -offs..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Match" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "constraint.png" 
+        -image1 "constraint.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PointConstraint;\nperformPointConstraint 0;\npointConstraint -offset 0 0 0 -weight 1;\nperformOrientConstraint 0;\norientConstraint -offset 0 0 0 -weight 1;\nRemoveConstraintTarget;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Blendshape Symetrical To Mirror" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "# Made by Jeff Rosenthal\n# JeffRosenthal.org\n# 8/1/2012\n########..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "BlnM" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "blendShape.png" 
+        -image1 "blendShape.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "# Made by Jeff Rosenthal\n# JeffRosenthal.org\n# 8/1/2012\n################################################################################\n# Creates left and ride side variations of a blendshape along the X axis\n#\n# Select your source face, then select the blendshape you created\n# run the script!\n#\n# Questions? jeffrosenth at gmail dot com\n\n\n#USER CAN CHANGE THIS NUMBER\n###################\npercentRange = .2\n\n####  .1 = 10% falloff\n####  .3 = 30% falloff\n####   1 = 100% falloff (probably looks bad)\n###################\n\n\nimport maya.cmds as cmds\n\ndef getValue(x, range, max):\n       value = (1 - x / (range * max)) / 2\n       return clamp(value, 0, 1)\n\ndef clamp(value, low, high):\n    if value < low:\n        return low\n    if (value > high):\n        return high\n    return value\n       \ndef getShapeNode(transform):\n    return cmds.listRelatives(transform, shapes=True)[0]\n\n(sourceObj, targetObj) = cmds.ls(sl=1)\nsourceShape = getShapeNode(sourceObj)\n\n#look at number of verticies\ncmds.select(sourceObj)\nnumVerts = cmds.polyEvaluate(v=1)\n\n#figure out width of face (assume X axis)\nrgtX = 0\nlftX = 0\nfor i in range(0,numVerts):\n       testX = cmds.pointPosition(targetObj + \".vtx[\" + str(i) + \"]\", l=1)[0]\n       if testX < rgtX:\n               rgtX = testX\n       if testX > lftX:\n               lftX = testX\n               \n#duplicate face twice (one left, one right)\ncmds.select(targetObj)\ntargetObj_Lft = cmds.duplicate(n=targetObj+'_Lft')[0]\ncmds.move(rgtX * -2.1, 0, 0, r=1)\ncmds.select(targetObj)\ntargetObj_Rgt = cmds.duplicate(n=targetObj+'_Rgt')[0]\ncmds.move(rgtX * 2.1, 0, 0, r=1)\n\nside = 1\n#on each object\nfor target in ([targetObj_Lft, targetObj_Rgt]):\n    side *= -1\n    #for each vert\n    for i in range(0,numVerts):\n        #get vert positions\n        #sourcePos = cmds.getAttr(sourceShape + '.pnts[' + str(i) + ']')[0]\n        #targetPos = cmds.getAttr(target + '.pnts[' + str(i) + ']')[0]\n        sourcePos = cmds.pointPosition(sourceObj + \".vtx[\" + str(i) + \"]\", l=1)\n        targetPos = cmds.pointPosition(target + \".vtx[\" + str(i) + \"]\", l=1)        \n        \n        #find difference\n        differencePos = (sourcePos[0] - targetPos[0], sourcePos[1] - targetPos[1], sourcePos[2] - targetPos[2])\n        \n        #get falloff amount from side of object\n        testX = cmds.pointPosition(sourceObj + \".vtx[\" + str(i) + \"]\", l=1)[0]\n        falloff = getValue(testX, percentRange, rgtX * side)\n        \n        #move vert difference * falloff amount\n        cmds.xform(target + '.vtx[' + str(i) + ']', rt=(differencePos[0] * falloff, differencePos[1] * falloff, differencePos[2] * falloff))\n\ncmds.select(cl=True)" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Combo Blendshapes" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "\"\"\"\n------------------------------------------------------------..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "BCor" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "blendShapePlus.png" 
+        -image1 "blendShapePlus.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "\"\"\"\n--------------------------------------------------------------------------------------------------------------------\ncorrectiveBlendshapeCreator.py - Python Script\n--------------------------------------------------------------------------------------------------------------------\nCopyright 2012 Carlos Chacon L. All rights reserved.\nDESCRIPTION:\nEases the creation of corrective blendshapes and their connection to the original mesh.\nUSAGE:\n*Run the script\n*Second, Select, in the following order, the master mesh, the first blendshape,the second blendshape. Click the \"Create Corrective Blendshape\" button.\n*Remodel the created blendshape.\n*Second, click the \"Connect blendshape to master\" button.\n*Done.\nAUTHOR:\nCarlos Chacon L. (caedo.00 at gmail dot com)\n--------------------------------------------------------------------------------------------------------------------\n\"\"\"\nfrom maya.cmds import blendShape, setAttr, ls, duplicate, rename, move, expression, select, getAttr, listRelatives, listConnections, window, columnLayout, button,text, separator, showWindow, deleteUI, delete, attributeQuery, pointPosition\n#UI Elements\nbsWin = \"correctiveBSWin\"\nbsLayout = \"correctiveBSLayout\"\nbtnCreateCorrectiveBS = \"btnCreateCorrectiveBS\"\nbtnConnectCorrectiveBS = \"btnConnectCorrectiveBS\"\nbtnRestart = \"btnRestart\"\nlblMsgBS =\"lblMsgBS\"\n#End UI Elements\n#BS variables\nmaster =\"\"\nblendshape1 =\"\"\nblendshape2 =\"\"\ncorrective_blendshape =\"\" #name of the corrective blendshape\ndummy_blendshape =\"\" #name of the dummy blendshape who have the combination of the two original blendshapes and the corrective blendshape\n#End BS variables\ndef showSuccessMsg(msg):\n\tglobal lblMsgBS\n\ttext(lblMsgBS , e=True, l=msg, bgc=(0,0.54,0))\ndef showFailMsg(msg):\n\tglobal lblMsgBS\n\ttext(lblMsgBS, e=True, l=msg, bgc=(0.92,0.08,0.19))\ndef showInfoMsg(msg):\n\tglobal lblMsgBS\n\ttext(lblMsgBS, e=True, l=msg, bgc=(0.8,0.8,0.6))\ndef correctiveBlendshapeExists(obj, blendshape1, blendshape2):\n\t\"\"\"\n\tChecks to see if a corrective blendshape for the given bs1 and bs2 exists on the master mesh\n\t\"\"\"\n\tblendshape_node = getBlendshapesFromMaster(obj)[0]\n\t#Now we need to check if the two possible name combinations exists in the blendshape node.\n\tcorrective_blendshape_name1 = \"%s_%s_dummy\" % (blendshape1, blendshape2)\n\tcorrective_blendshape_name2 = \"%s_%s_dummy\" % (blendshape2, blendshape1)\n\treturn (attributeQuery(corrective_blendshape_name1, node=blendshape_node, ex=True) or attributeQuery(corrective_blendshape_name2, node=blendshape_node, ex=True))\ndef clearHistory(obj):\n\t\"\"\"\n\tClears the construction history of specified obj.\n\t\"\"\"\n\tdelete(obj, ch=True)\ndef getSkinClusterNode(obj):\n\t\"\"\"\n\tGets the skin cluster nodes of an object. If there isn't any\n\treturn None.\n\t\"\"\"\n\tshape_node = listRelatives(obj, shapes=True)\n\tskincluster_node = listConnections(shape_node[0],d=False,s=True, type=\"skinCluster\")\n\treturn skincluster_node\ndef hasSkinCluster(obj):\n\t\"\"\"\n\tChecks if the object is binded to a skin cluster.\n\t\"\"\"\n\tskincluster_node = getSkinClusterNode(obj)\n\tif(skincluster_node is not None):\n\t\treturn True\n\telse:\n\t\treturn False\ndef getShapeNode(obj):\n\t\"\"\"\n\tReturns the shape node of an object.\n\t\"\"\"\n\treturn listRelatives(obj, shapes=True)\ndef getBlendshapesFromMaster(obj):\n\t\"\"\"\n\tReturns the blendshape nodes of target obj.\n\t\"\"\"\n\t#Blendshape nodes are connected to the shape node, not the transform!\t\n\tif(hasSkinCluster(obj)):\n\t\tskin_cluster = getSkinClusterNode(obj)\n\t\tblendshape_nodes = getBlendshapeNodes(skin_cluster[0])\t\n\telse:\n\t\tshape_node = listRelatives(obj, shapes=True)\t\n\t\tblendshape_nodes = getBlendshapeNodes(shape_node[0])\n\treturn blendshape_nodes\ndef getBlendshapeNodes(node):\n\treturn listConnections(node,d=False,s=True, type=\"blendShape\")\ndef getBlendshapeWeightCount(obj):\n\t\"\"\"\n\tReturns the total number of weights in a blendshape node.\n\t\"\"\"\n\treturn blendShape(obj, q=True, wc=True)\ndef setBlendshapeWeight(obj,weight ,value):\n\t\"\"\"\n\tTurn on blenshape of a object\n\t\"\"\"\n\tblendshape_node = getBlendshapesFromMaster(obj)[0]\n\tsetAttr(blendshape_node + \".\" + weight, value )\ndef getBlendshapeWeight(obj, weight):\n\t\"\"\"\n\tGet the weight value of blendshape\n\t\"\"\"\n\tblendshape_node = getBlendshapesFromMaster(obj)[0]\n\treturn getAttr(blendshape_node + \".\" + weight)\ndef getVertices(obj):\n\tvertices = list()\n\tfor v in getAttr(obj+\".vrts\", multiIndices=True):\n\t\tvertices.append(pointPosition(obj+\".vtx[\"+str(v)+\"]\",w=True))\n\treturn vertices\ndef getObjWidth(obj):\n\tvertices = getVertices(obj)\n\treturn max([v[0] for v in vertices]) - min([v[0] for v in vertices])\ndef getBlendshapePosFromMaster(master):\n\t\"\"\"\n\tReturns the blendshape position in X based on the master's X position.\t\n\t\"\"\"\n\tmaster_pos = getAttr(master + \".tx\")\n\treturn master_pos + getObjWidth(master)\ndef createCorrectiveBlendshape(master, blendshape1, blendshape2):\n\t\"\"\"\n\tCreates the corrective blendshape to be reshaped, using the master as template.\n\t\"\"\"\n\tcorrective_blendshape_pos = getBlendshapePosFromMaster(master)\n\tcorrective_blendshape = \"%s_%s_corrective\" % (blendshape1, blendshape2)\n\tduplicate(master, name=corrective_blendshape)\n\tif (getBlendshapeWeight(master, blendshape1) == 0) and (getBlendshapeWeight(master, blendshape2) == 0):\n\t\tblendShape(blendshape1, blendshape2,corrective_blendshape)\n\t\tsetBlendshapeWeight(corrective_blendshape, blendshape1, 1)\n\t\tsetBlendshapeWeight(corrective_blendshape, blendshape2, 1)\n\t\tclearHistory(corrective_blendshape)\n\tmove(corrective_blendshape_pos,0,0, corrective_blendshape)\n\treturn corrective_blendshape\ndef applyBlendshapesToDummy(master, blendshape1, blendshape2, corrective_blendshape):\n\t\"\"\"\n\tApplies the bs1, bs2 and corrective_bs to a copy of the master,\n\tin order to create the final substraction of the bs1 and bs2 against\n\tcorrective bs.\n\t\"\"\"\n\tdummy_blendshape = corrective_blendshape.replace(\"corrective\", \"dummy\")\n\tdummy_blendshape_pos = getBlendshapePosFromMaster(corrective_blendshape)\n\tblendshape_node = getBlendshapesFromMaster(master)[0]\n\tsetAttr(blendshape_node + \".envelope\", 0)\n\tduplicate(master, name=dummy_blendshape)\n\tsetAttr(blendshape_node + \".envelope\", 1)\n\tmove(dummy_blendshape_pos,0,0, dummy_blendshape)\n\tblendshape_node = blendShape(blendshape1, blendshape2, corrective_blendshape, dummy_blendshape)[0]\n\tsetAttr(blendshape_node + \".\" + blendshape1, -1)\n\tsetAttr(blendshape_node + \".\" + blendshape2, -1)\n\tsetAttr(blendshape_node + \".\" + corrective_blendshape, 1)\n\treturn dummy_blendshape\ndef addDummyToMasterBlendshape(master,dummy):\n\t\"\"\"\n\tAdds the template blendshape with the corrective substraction\n\tto the master blendshape.\n\t\"\"\"\n\tblendshape_node = getBlendshapesFromMaster(master)[0]\n\tweight_count = getBlendshapeWeightCount(master)\n\tblendShape(master, e=True, t=[master, weight_count+1,dummy,1])\ndef addCorrectiveExpressionToMaster(master, blendshape_dummy, blendshape1, blendshape2):\n\t\"\"\"\n\tAdd expression to turn on corrective expression when\n\tbs1 and bs2 are active.\n\t\"\"\"\n\tmaster_blendshape = getBlendshapesFromMaster(master)[0]\n\texpression_name = \"exp_\" + blendshape_dummy\n\texpression_string = master_blendshape+\".\"+blendshape_dummy + \"=\" + master_blendshape +\".\"+blendshape1 + \" * \" + master_blendshape+\".\"+blendshape2 + \";\"\n\texpression(s=expression_string, n=expression_name)\ndef createCopy(*args):\n\tglobal master, blendshape1, blendshape2, corrective_blendshape\t\n\tblendshapes = ls(sl=True)\n\tif(len(blendshapes) == 3):\n\t\tif(corrective_blendshape is \"\"):\n\t\t\tmaster = blendshapes[0]\n\t\t\tif(getBlendshapesFromMaster(master) is not None):\n\t\t\t\tblendshape1 = blendshapes[1]\n\t\t\t\tblendshape2 = blendshapes[2]\n\t\t\t\tif(not correctiveBlendshapeExists(master, blendshape1, blendshape2)):\n\t\t\t\t\tcorrective_blendshape = createCorrectiveBlendshape(master, blendshape1, blendshape2)\n\t\t\t\t\tshowSuccessMsg(\"Corrective blendshape created successfully. Remodel it!\")\n\t\t\t\telse:\n\t\t\t\t\tshowFailMsg(\"Corrective blendshape already exists.\")\n\t\t\telse:\n\t\t\t\tshowFailMsg(\"The master mesh doesn't has any blendshape node.\")\n\t\telse:\n\t\t\tshowFailMsg(\"A corrective blendshape is already on creation process. Hit the restart button if you want to start all over again.\")\n\telse:\n\t\tshowFailMsg(\"Incorrect number of blendshapes objs selected! Please select the master, blenshape1 and blendshape2.\")\ndef connectoToMaster(*args):\n\tglobal master, blendshape1, blendshape2, corrective_blendshape\n\tif((master is not \"\") and (blendshape1 is not \"\") and (blendshape2 is not \"\") and (corrective_blendshape is not \"\")):\n\t\tdummy_blendshape = applyBlendshapesToDummy(master, blendshape1, blendshape2, corrective_blendshape)\n\t\taddDummyToMasterBlendshape(master, dummy_blendshape)\n\t\taddCorrectiveExpressionToMaster(master, dummy_blendshape, blendshape1, blendshape2)\n\t\tmaster = blendshape1 = blendshape2 = corrective_blendshape = dummyblendshape = \"\"\n\t\tshowSuccessMsg(\"Corrective blendshape has been connected successfully.\")\n\telse:\n\t\tshowFailMsg(\"The corrective blendshape hasn't been created.\")\ndef restart(*args):\n\t\"\"\"\n\tRestart the whole corrective blendshape creation process.\n\t\"\"\"\n\tglobal master, blendshape1, blendshape2, corrective_blendshape, dummy_blendshape\n\tmaster = blendshape1 = blendshape2 = corrective_blendshape = dummy_blendshape = \"\"\n\tshowInfoMsg(\"Creation process restarted.\")\ndef showCorrectiveBlendshapeWindow():\n\t\"\"\"\n\tShows the GUI for the corrective blendshape creator.\n\t\"\"\"\n\tglobal bsWin, bsLayout,btnCreateCorrectiveBS, btnConnectCorrectiveBS,btnRestart,lblMsgBS\n\tif(window(bsWin, q=True, exists=True)):\n\t\tdeleteUI(bsWin, window=True)\n\twindow(bsWin,width = 270, title=\"Corrective BS Creator\")\n\tcolumnLayout(bsLayout, adjustableColumn = True,p=bsWin,co=(\"both\",10), rs=10)\n\tseparator(p=bsLayout, vis=True)\n\tbutton(btnCreateCorrectiveBS,p=bsLayout, l=\"1. Create Corrective Blendshape\",h=50,command=createCopy)\n\tseparator(p=bsLayout)\n\tbutton(btnConnectCorrectiveBS,p=bsLayout, l=\"2. Connect Blendshape to Master\", h=50,command=connectoToMaster)\n\tseparator(p=bsLayout)\n\tseparator(p=bsLayout, vis=False)\n\tbutton(btnRestart, p=bsLayout, l=\"Restart\", h=50, command=restart)\n\tseparator(p=bsLayout)\n\ttext(lblMsgBS,p=bsLayout,l=\"Select the master, blendshape1 and blendshape2 to create the corrective BS.\",ww=True )\n\tseparator(p=bsLayout, vis=True)\n\tshowWindow()\nshowCorrectiveBlendshapeWindow()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "\nabSymMesh Mirror Blendshapes" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "\nabSymMesh;" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "abSym" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "mirrorSkinWeight.png" 
+        -image1 "mirrorSkinWeight.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "\nabSymMesh;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "FollicleRivet" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "/* This file downloaded from Highend3d.com\n''  \n''  Highend3d.co..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "hairConvertFollicles.png" 
+        -image1 "hairConvertFollicles.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "/* This file downloaded from Highend3d.com\n''  \n''  Highend3d.com File Information:\n''  \n''    Script Name: follicle constraint\n''    Author:  \n''    Last Updated: May 20, 2009\n''    Update/Change this file at:\n''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/misc/5330.html\n''  \n''  Please do not alter any information above this line\n''  it is generated dynamically by Highend3d.com and will\n''  be changed automatically on any updates.\n*/\n//////////////////////////////////////////////////////////////////////\n//\n//\tcreated by: Michael Paixao\n//\n//\tusefull for adding things like buttons and what-not,\n//\tgood in cloth sim objects, follicles follow normal angles!\n//\t\n//\thow-to:\n//\t// polygons //\n//\t\tselect a vertex,UV,edge or face, or a couple\n//\t\trun the tool... done!\n//\t\tkinda...\n//\t\tselect the object you want to move and follow\n//\t\tthen connect any way you like (parent constraint etc..\n//\n//\t// NURBS //\n//\t\tselect either surface point or surface UV\n//\t\trun the tool, same steps as polygons from here\n//\n//\n//\tthings that can cause problems are UV's on top of\n//\teachother\n//\t\t\n//\tquestions, comments, or tool requests can be sent to:\n//\n//\tinfo@simpletofind.ca\n//\n//////////////////////////////////////////////////////////////////////\n{\nstring $sel[];\nstring $buffer[];\nint $token;\nstring $face[];\nfloat $uvPos[];\nConvertSelectionToUVs;\n$sel = `ls -sl -fl`;\n\n// checks the if the group exists, then creates it if no, cleans it up as well //\nif ( `objExists \"follicleGroup\"` == 0 )\n\t\t{\n\t\tselect -cl;\n\t\tgroup -em -n \"follicleGroup\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.tx\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.ty\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.tz\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.rx\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.ry\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.rz\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.sx\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.sy\";\n\t\tsetAttr -lock true -keyable false \"follicleGroup.sz\";\n\t\t}\nfor ( $uv in $sel )\n\t{\n\t\n\t// finds the source obj for the UV and its current UV map //\n\t$token = `tokenize $uv \".\" $buffer`;\n\tselect -r $buffer[0];\n\tpickWalk -d down;\n\t$inObj = `ls -sl`;\n\t$foll = `createNode follicle`;\n\tselect -r $foll;\n\tpickWalk -d up;\n\t$follTop = `ls -sl`;\n\n\t// makes the necessary connections for the follicle to follow the mesh //\n\t\n\t// nurbs vs poly //\n\tif ( `attributeExists \"outMesh\" $inObj[0]`)\n\t\t{\n\t\teval(\"connectAttr -f \"+$inObj[0]+\".outMesh \"+$foll+\".inputMesh\\;\");\n\t\tselect -r $uv;\n\t\t$uvPos = `polyEditUV -q`;\n\t\t}\n\t\n\tif ( `attributeExists \"local\" $inObj[0]`)\n\t\t{\n\t\teval(\"connectAttr -f \"+$inObj[0]+\".local \"+$foll+\".inputSurface\\;\");\n\t\tselect -r $uv;\n\t\t$uvPos = `nurbsEditUV -q`;\n\t\t$size = `size $uvPos`;\n\t\tif($size == 0)\n\t\t\t{\n\t\t\tint $token, $token2;\n\t\t\tstring $buffer[], $buffer2[];\n\t\t\t$token = `tokenize $uv \"[]\" $buffer`;\n\t\t\t\t\t\t\n\t\t\t$uMa = `ls -sl -o`;\n\t\t\tselect -r ($uMa[0] + \".u[99999999]\");\n\t\t\tstring $uMax[] = `ls -sl`;\n\t\t\t$token2 = `tokenize $uMax[0] \"[]\" $buffer2`;\n\t\t\tfloat $uFloat = $buffer2[$token2-1];\n\t\t\t$uFloat = $uFloat;\n\t\t\t\n\t\t\t$vMa = `ls -sl -o`;\n\t\t\tselect -r ($vMa[0] + \".v[99999999]\");\n\t\t\tstring $vMax[] = `ls -sl`;\n\t\t\t$token2 = `tokenize $vMax[0] \"[]\" $buffer2`;\n\t\t\tfloat $vFloat = $buffer2[$token2-1];\n\t\t\t$vFloat = $vFloat;\n\t\t\t\n\t\t\tfloat $uLoc = $buffer[$token-2];\n\t\t\tfloat $vLoc = $buffer[$token-1];\n\t\t\t\n\t\t\tprint ($uLoc / $uFloat);print \"\\n\";\n\t\t\tprint ($vLoc / $vFloat);print \"\\n\";\n\t\t\t$uvPos[0] = $uLoc / $uFloat;\n\t\t\t$uvPos[1] = $vLoc / $vFloat;\n\t\t\t\n\t\t\t}\n\t\t}\n\t\n\teval(\"connectAttr -f \"+$inObj[0]+\".worldMatrix \"+$foll+\".inputWorldMatrix\\;\");\n\teval(\"connectAttr -f \"+$foll+\".outTranslate \"+$follTop[0]+\".translate\\;\");\n\teval(\"connectAttr -f \"+$foll+\".outRotate \"+$follTop[0]+\".rotate\\;\");\n\t\n\t\n\tsetAttr ($foll+\".parameterU\") $uvPos[0];\n\tsetAttr ($foll+\".parameterV\") $uvPos[1];\n\t\n\t\n\t// parents the follicle into the follicleGroup //\n\tselect -r $follTop[0];\n\tselect -tgl \"follicleGroup\";\n\tparent;\n\t}\nselect -r $sel;\n}" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "cgmToolbox" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "cgmToolbox" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "CG Monks Toolbox" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "cgmTools.bmp" 
+        -image1 "cgmTools.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "cgmToolbox" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "List Influenced/Skinned Joints" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "mg_listInfluencedJoits" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "SJnts" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "skin.png" 
+        -image1 "skin.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "mg_listInfluencedJoits" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "MAXSkinWeightTool" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "MAXSkinWeightTool" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "MSkin" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "addSkinInfluence.png" 
+        -image1 "addSkinInfluence.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "MAXSkinWeightTool" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Group Curves Under One Transform" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "global proc groupUnderTransform(){\nstring $selCurves[] = `ls -sl..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "crvJn" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "crvOffset.png" 
+        -image1 "crvOffset.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "global proc groupUnderTransform(){\nstring $selCurves[] = `ls -sl`;\nmakeIdentity -apply true -t 1 -r 1 -s 1 -n 0;\nselect -deselect $selCurves[0];\npickWalk -d down;\nselect -add $selCurves[0];\nparent -r -s;\nselect -r $selCurves[0];\n}\ngroupUnderTransform;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "parent Shape Node" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "parent -r -s;" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "shpP" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "crvOffset.png" 
+        -image1 "crvOffset.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "parent -r -s;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Copy Skin - select new mesh/es then old mesh with existing weights last" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "\n\n//////////////////////////////////////////\n//Select meshes to ..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "copSk" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "copySkinWeight.png" 
+        -image1 "copySkinWeight.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "\n\n//////////////////////////////////////////\n//Select meshes to transfer weight to, then shift-select the mesh with weights, then run this script\n\nstring $userSel[] = `ls -sl`;\n\nif(`size($userSel)` > 1)\n{\n\nselect $userSel[((`size($userSel)`) - 1)];\nstring $cageMesh[] = `ls -sl`;\n\nselect $userSel;\nselect -tgl $cageMesh;\nstring $pieces[] = `ls -sl`;\n\n//get inputs of weights in skin\nstring $theJoints[] = `skinCluster -q -wi $cageMesh`;\n\nif(`size($theJoints)` > 0 && $cageMesh[0] != \"\")\n{\n\nint $counter;\nint $sizer = size($pieces);\n\nfor ($counter = 0; $counter < $sizer; $counter++)\n{\n\n///////////////////////////////////////////////////////////////////////////////////////\n//Determine if skinCluster exists on piece\nstring $skins[] ;\nclear $skins ;\n\nstring $hist[] = `listHistory -pdo 1 -il 2 $pieces[$counter]` ;\nstring $h ;\n\nfor ($h in $hist)\n{\nif (nodeType($h) == \"skinCluster\")\n{\n$skins[size($skins)] = $h ;\n}//end of if skinCluster type exists\n}//end of for loop through history\n\n\n/////////////////////////////////////////////////////////////////////////////////////////\n//If skinCluster Doesn't exist, add skinCluster\nif(`size($skins)` == 0)\n{\nselect $pieces[$counter] $theJoints;\nnewSkinCluster \"-tsb -mi 10 -dr 10\" ;\n}//end of apply skinCluster if none found\n\n\n//////////////////////////////////////////////////////////////////////////////////////////\n//Add all influences from cageMesh\nint $counterInf;\nint $sizerInf = size($theJoints);\nstring $pieceJoints[] = `skinCluster -q -wi $pieces[$counter]`;\n\nfor ($counterInf = 0; $counterInf < $sizerInf; $counterInf++)\n{\nint $found = stringArrayContains($theJoints[$counterInf], $pieceJoints);\nif($found == 0){skinCluster -e -ai $theJoints[$counterInf] $skins[0];}\n}//end of for loop through adding all cageJoints\n\n\n///////////////////////////////////////////////////////////////////////////////////////////\n//Remove extra joints that don't match those in cageMesh skinCluster\nstring $theJoints[] = `skinCluster -q -wi $cageMesh`;\nstring $pieceJoints[] = `skinCluster -q -wi $pieces[$counter]`;\nstring $diffJoints[] = stringArrayRemove($theJoints, $pieceJoints);\n\nint $counterInf;\nint $sizerInf = size($diffJoints);\n\nif(`size($diffJoints)` > 0)\n{\nfor ($counterInf = 0; $counterInf < $sizerInf; $counterInf++)\n{\nskinCluster -e -ri $diffJoints[$counterInf] $skins[0];\n}//end of for loop through removing extra joints\n}//end of if any joints are different\n\n\n//////////////////////////////////////////////////////////////////////////////////////////\n//Transfer the Weights\nselect $cageMesh $pieces[$counter];\ncopySkinWeights -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -influenceAssociation oneToOne -influenceAssociation name -normalize;\n\n\n//////////////////////////////////////////////////////////////////////////////////////////\n//Finalize\nprint (\"\\nSkin Applied/Weights Transferred: \" + ($counter + 1) + \"/\" + $sizer);\n\n}//end of loop through pieces\n\nselect $userSel;\n\n}//end of if there is a skinCluster to copy from\n\n}//end of if user has selected enough items" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "tfSkin Magic Skin Smooth" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "import tf_smoothSkinWeight\ntf_smoothSkinWeight.paint()" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "tf Smooth Skin Tool" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "paintBlendshape.png" 
+        -image1 "paintBlendshape.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import tf_smoothSkinWeight\ntf_smoothSkinWeight.paint()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Export Skin Cluster" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "if (!`pluginInfo -q -l \"transferSkinCluster.py\"`) loadPlugin( \"t..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/Users/andrewsilke/Library/Preferences/Autodesk/maya/2015-x64/prefs/icons/icSWexport.png" 
+        -image1 "/Users/andrewsilke/Library/Preferences/Autodesk/maya/2015-x64/prefs/icons/icSWexport.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "// export mode\nif (!`pluginInfo -q -l \"transferSkinCluster.py\"`) loadPlugin( \"transferSkinCluster.py\" );\nicTransferSkinCluster 0 0; \n" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Import Skin Cluster" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "if (!`pluginInfo -q -l \"transferSkinCluster.py\"`) loadPlugin( \"t..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "/Users/andrewsilke/Library/Preferences/Autodesk/maya/2015-x64/prefs/icons/icSWimport.png" 
+        -image1 "/Users/andrewsilke/Library/Preferences/Autodesk/maya/2015-x64/prefs/icons/icSWimport.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "// export mode\nif (!`pluginInfo -q -l \"transferSkinCluster.py\"`) loadPlugin( \"transferSkinCluster.py\" );\nicTransferSkinCluster 1 0; " 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Skin Wrangler" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "\nimport skinWrangler as sw\nskinWranglerWindow = sw.show()" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "SW" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "skin.png" 
+        -image1 "skin.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "\nimport skinWrangler as sw\nskinWranglerWindow = sw.show()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Connect Attributes in Channel Box" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "string $usage = \"Select target object THEN source objects, selec..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "cnct" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "connectField.png" 
+        -image1 "connectField.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "string $usage = \"Select target object THEN source objects, select channels in the Channel Box.\\n\";\nstring $sel[] = `ls -sl`;\nif (size($sel) == 2){\n    string $source = $sel[1];\n    string $target = $sel[0];\n    string $shape[] = `listRelatives -s $source`;\n    int $i;\n\n    string $myAttr[];\n    clear $myAttr;\n    string $mySma[] = `channelBox -q -sma  mainChannelBox`;\n    string $mySsa[] = `channelBox -q -ssa  mainChannelBox`;\n    \n    select -r $target;\n\n    if (size($mySma)>0 || size($mySsa)>0){\n        if (!`attributeExists (\"from_\" + $source) $target`){\n            addAttr -ln (\"from_\" + $source) -nn (\"------- from \" + $source + \"  --------\") -at bool $target;\n            setAttr -e -channelBox true ( $target + \".from_\" + $source);\n        }\n\n        for ( $a=0; $a<size($mySma); $a++ ) {\n            string $attrSource;\n            if (`attributeQuery -node $source -ex $mySma[$a] `)\n                $attrSource = $source;\n            else\n                $attrSource = $shape[0];\n\n            float $value = `getAttr ($attrSource + \".\" + $mySma[$a] )`;\n            setAttr ($target + \".\" + $mySma[$a] ) $value;\n            connectAttr -f ($target + \".\" + $mySma[$a] ) ($attrSource + \".\" + $mySma[$a] );\n        }\n        for ( $a=0; $a<size($mySsa); $a++ ) {\n            string $attrSource;\n            if (`attributeQuery -node $source -ex $mySsa[$a] `)\n                $attrSource = $source;\n            else\n                $attrSource = $shape[0];\n    \n            float $value = `getAttr ($attrSource + \".\" + $mySsa[$a] )`;            \n            string $type = `getAttr -typ ($attrSource + \".\" + $mySsa[$a] )`;\n            float $minim[];\n            clear $minim;\n            float $maxim[];\n            clear $maxim;\n\n            string $createAttrString = \"addAttr -ln \" + $mySsa[$a] + \" -at \" + $type + \" -k 1 \";\n            \n            if (`attributeQuery -node $attrSource -minExists $mySsa[$a] `){\n                $minim = `attributeQuery -node $attrSource -min $mySsa[$a] `;\n                $createAttrString = $createAttrString + \"-min \" + $minim[0];\n            }\n            if (`attributeQuery -node $attrSource -maxExists $mySsa[$a] `){\n                $maxim = `attributeQuery -node $attrSource -max $mySsa[$a]`;\n                $createAttrString = $createAttrString + \"-max \" + $maxim[0];\n            }\n            \n            select -r $target;\n\n            eval $createAttrString;\n            setAttr ($target + \".\" + $mySsa[$a] ) $value;\n            connectAttr -f ($target + \".\" + $mySsa[$a] ) ($attrSource + \".\" + $mySsa[$a] );\n        }\n    }else{\n        print \"select attributes in the Channel Box.\\n\";\n    }\n}else if (size($sel)!=2){\n    print \"you need to select TWO objects. ONE target, and ONE source.\\n\";\n\n}else{\n    print $usage;\n}    " 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Curve Creator" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "import curveRecreator\ncurveRecreator.StartUI()" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "cntrl" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "crvOffset.png" 
+        -image1 "crvOffset.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import curveRecreator\ncurveRecreator.StartUI()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "kk_controllers" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "kk_controllers" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "crvKK" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "crvOffset.png" 
+        -image1 "crvOffset.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "kk_controllers" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "labelJointScript" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "//set for left with naming L_ but can change easy\n\n\nstring $mySe..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "jntL" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "rigidBind.png" 
+        -image1 "rigidBind.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "//set for left with naming L_ but can change easy\n\n\nstring $mySelJnts[] = `ls -sl`;\nfor ($jnt in $mySelJnts)\n{\n// center jnts use 0.\n// left jnts use 1.\n// right jnts use 2.\nsetAttr ($jnt + \".side\") 1;\n// currently sets the type to other.\nsetAttr ($jnt + \".type\") 18;\n// strips out the name of the joint so have matching label names\nstring $jntNewName;\n$jntNewName = `substitute \"jnt\" $jnt \"\"`;\n$jntNewName = `substitute \"L_\" $jntNewName \"\"`;\nsetAttr -type \"string\" ($jnt+\".otherType\") $jntNewName;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Mirror SDK" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "source icMirrorSDK.mel;icMirrorSDK;" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "MrDK" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "twoPointArc.png" 
+        -image1 "twoPointArc.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "source icMirrorSDK.mel;icMirrorSDK;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "DPK Paint Deform Delta Blendshape" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "DPK_paintDeform;" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "PntD" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "paintBlendshape.png" 
+        -image1 "paintBlendshape.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "DPK_paintDeform;" 
+        -sourceType "mel" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "zero joint " 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "#'root' is the name of your root joint in the skeleton\nimport ma..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "jntF" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "rotate_M.png" 
+        -image1 "rotate_M.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "#must select the root joint of the skeleton. \nimport maya.cmds\n\nsourceObject = cmds.ls(selection = True)[0]\n\ncmds.joint(cmds.listRelatives(sourceObject, ad = 1, c = 1), e = 1, zso = 1)" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 35
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "label joint requires L_ or R_ convention" 
+        -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "import maya.cmds\n\nselJnts = cmds.ls(selection = True)\n\nfirstLett..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "label" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "areaLight.svg" 
+        -image1 "areaLight.svg" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "# works with _L and L_ convention\n# to do all conventions in a regular expression\n\nimport maya.cmds as cmds\n\n#record sel objects\nselObjs = cmds.ls(selection = True)\n\n#filter list by joints (error check)\njntObjs = [] \nfor i in selObjs:\n   if cmds.nodeType(i) == 'joint':\n     jntObjs.append(i)\ncmds.select(d = True)\n\n\n#label joints\nfor i, jnt in enumerate(jntObjs):\n    firstLetter = jnt.split('_')[0]\n    lastLetter = jnt.split('_')[-1]\n    \n    if firstLetter == 'L' or lastLetter == 'L':\n        sideV = 1\n        jntName = jnt.replace ('L_', '')\n        jntName = jnt.replace ('_L', '')\n    elif firstLetter == 'R' or lastLetter == 'R':\n        sideV = 2\n        jntName = jnt.replace ('R_', '')\n        jntName = jnt.replace ('_R', '')\n    else:\n        sideV = 0\n        jntName = jnt\n        \n    cmds.setAttr( (jnt + '.side'), sideV )\n    cmds.setAttr( (jnt + '.type'), 18 )\n    cmds.setAttr( (jnt + '.otherType'), jntName, type=\"string\"  )" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 
