@@ -15,7 +15,7 @@ windowPref -topLeftCorner 250 200 -widthHeight 700 400 -maximized false dynPaint
 windowPref -topLeftCorner 250 200 -widthHeight 550 562 -maximized false blindDataEditor1Window;
 windowPref -topLeftCorner 250 200 -widthHeight 1120 640 -maximized false polyTexturePlacementPanel1Window;
 windowPref -topLeftCorner 235 230 -widthHeight 1430 710 -maximized false contentBrowserPanel1Window;
-windowPref -topLeftCorner 99 54 -widthHeight 1589 938 -maximized false MayaWindow;
+windowPref -topLeftCorner 34 2061 -widthHeight 1589 938 -maximized false MayaWindow;
 windowPref -topLeftCorner 415 642 -widthHeight 450 320 -maximized false NewFeatureHighlightWnd;
 windowPref -topLeftCorner 415 642 -widthHeight 778 686 -maximized false RRM_Window;
 windowPref -topLeftCorner 338 480 -widthHeight 1180 545 -maximized false scriptEditorPanel1Window;
