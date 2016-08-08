@@ -1,0 +1,2 @@
+getenv("MODULESLOADED");
+getenv("MAYA_SHELF_PATH");
