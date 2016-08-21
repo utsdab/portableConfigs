@@ -14,6 +14,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Back Face Culling Toggle" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "toggleSurfaceBackfaceCulling();" 
         -labelOffset 0
@@ -45,6 +46,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Create A Tube From A Curve UI" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "createTube;" 
         -labelOffset 0
@@ -76,6 +78,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Instant Obj Clean" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "/*\n\n\tOBJ Import and Export.\n\tv4, January 2007\n\t- added folder br..." 
         -labelOffset 0
@@ -107,6 +110,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Triangulate NGons For GoZ (ZBrush)" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "polyCleanupArgList 3 { \"0\",\"1\",\"0\",\"0\",\"1\",\"0\",\"0\",\"0\",\"0\",\"1e-0..." 
         -labelOffset 0
@@ -138,6 +142,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Set Smooth Preview and Render Levels" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "source smoothControl.mel;\nobjSmoothMenu();" 
         -labelOffset 0
@@ -169,6 +174,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Dup Along A Path Toolbox" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "DupAlongPathToolbox" 
         -labelOffset 0
@@ -200,6 +206,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "spherize" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "# /*************************************************************..." 
         -labelOffset 0
@@ -231,6 +238,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Resolution Gate - 16x9" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "string $camera = \"\";\n\nstring $panel = `getPanel -wf`;\n\nif (`getP..." 
         -labelOffset 0
@@ -262,6 +270,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Gamma Swatches" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "gammaColorSwatch;" 
         -labelOffset 0
@@ -293,6 +302,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Lighters Friend" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "LightersFriend;" 
         -labelOffset 0
@@ -324,6 +334,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "convert rotation order on animated" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "import ml_convertRotationOrder\nml_convertRotationOrder.ui()" 
         -labelOffset 0
@@ -355,6 +366,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Retimer with FPS" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "// Retime Within a Frame Range - andrew silke\n// this script sca..." 
         -labelOffset 0
@@ -386,6 +398,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Retimer with Percentage" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "// Retime Within a Frame Range - andrew silke\n// this script sca..." 
         -labelOffset 0
@@ -417,6 +430,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Scale Keys From Mid Pivot UI" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "source keyScalerButtons.mel;\nkeyScalerButtons;" 
         -labelOffset 0
@@ -448,6 +462,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Connect To Sublime" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "import maya.cmds as cmds\n\n# Close ports if they were already ope..." 
         -labelOffset 0
@@ -479,6 +494,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "incremental save" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "from pymel.core import *\nimport os\nimport maya.cmds as cmds\nimpo..." 
         -labelOffset 0
@@ -510,6 +526,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Load MR" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "//icon lightBulb.png\n\n//DECLVARS\n\n//int $TM_flag_loadMentalPlug;..." 
         -labelOffset 0
@@ -541,6 +558,7 @@ global proc shelf_C3dC () {
         -preventOverride 0
         -annotation "Create Turntable 200 frames" 
         -enableBackground 0
+        -highlightColor 0.321569 0.521569 0.65098 
         -align "center" 
         -label "// icon  rotate_M.png\n\n//It is assumed that mental ray is alread..." 
         -labelOffset 0

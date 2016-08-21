@@ -1,2 +1,6 @@
 getenv("MODULESLOADED");
 getenv("MAYA_SHELF_PATH");
+getenv("CONFIG");
+getenv("CENTRAL");
+
+getenv("MAYA_APP_DIR");
