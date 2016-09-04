@@ -1,3 +1,4 @@
 *.pyc
 */workspace.xml
 */tasks.xml
+*/.DS_Store
