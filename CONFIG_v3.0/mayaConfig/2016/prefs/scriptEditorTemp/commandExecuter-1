@@ -1,2 +1,0 @@
-#### query api
-import tractor.api.query as tq
