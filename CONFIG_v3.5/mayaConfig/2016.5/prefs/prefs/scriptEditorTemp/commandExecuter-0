@@ -1,9 +1,0 @@
-########  print the environment
-
-import os
-
-print "Content-Type: text/plain\n\n"
-env = os.environ.keys()
-env.sort()
-for key in env:
-    print "%30s %s " % (key,os.environ[key])

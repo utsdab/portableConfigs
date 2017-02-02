@@ -1,6 +1,0 @@
-Maya Message Log starting Saturday, July 11, 2015
-
-Error: Unable to dynamically load : /Applications/Autodesk/mentalrayForMaya2016/plug-ins/Mayatomr.bundle
-dlopen(/Applications/Autodesk/mentalrayForMaya2016/plug-ins/Mayatomr.bundle, 1): Library not loaded: @executable_path/libsynColor.2016.0.51.dylib
-  Referenced from: /Applications/Autodesk/mentalrayForMaya2016/plug-ins/Mayatomr.bundle
-  Reason: image not found
