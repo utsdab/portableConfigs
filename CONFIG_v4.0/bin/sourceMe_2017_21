@@ -24,9 +24,9 @@ if [ -e ~/.startDirectory ] ; then
 ################################################
 #	Set the local config is running from a thumbdrive
 
-if [ -e ${CWD}/mayaConfig ] ; then
+if [ -e ${CWD}/mayaprefs ] ; then
 	export CONFIG=${CWD}
-	export MAYA_APP_DIR=${CONFIG}/mayaConfig
+	export MAYA_APP_DIR=${CONFIG}/mayaprefs
 	echo "INFO    : CONFIG=${CONFIG}"
   else
 	echo "WARNING : No CONFIG found"
