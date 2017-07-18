@@ -22,7 +22,7 @@ if [ -e ~/.startDirectory ] ; then
     fi
 
 ################################################
-#	Set the local config is running from a thumbdrive
+#	Set the local site is running from a thumbdrive
 
 if [ -e ${CWD}/mayaprefs ] ; then
 	export CONFIG=${CWD}
