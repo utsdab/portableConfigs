@@ -91,6 +91,6 @@
 	<key>type</key>
 	<string>Window Settings</string>
 	<key>CommandString</key>
-	<string>cd `cat ~/.startDirectory`; source bin/sourceMe_2017_21 </string>
+	<string>cd `cat ~/.startDirectory`; source bin/sourceMe_2018_21 </string>
 </dict>
 </plist>
