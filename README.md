@@ -1,3 +1,3 @@
 # portableConfigs
-Portable Config setups for students to take with them
-this will mostly function like a home directory.
+This is a template asset and needs to live in $DABASSETS/assets/CONFIG
+
